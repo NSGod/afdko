@@ -90,6 +90,8 @@ jobs:
         ./.run_cpplint.sh
 
     - name: Install AFDKO
+      env:
+          CFLAGS: '--coverage -I/usr/include/libxml2'
       run: |
         python -m pip install .
         python -m pip freeze --all
