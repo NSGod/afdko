@@ -48,8 +48,10 @@ IF ((NOT ${LibXml2_FOUND}) OR "${CMAKE_SYSTEM}" MATCHES "Linux")
    MESSAGE(STATUS "Could not locate LibXml2 or system is Linux, will install externally & statically link")
    set(LIBXML2_TAG tags/v2.9.13)
    include(ExternalLibXML2)
+   include_directories(${LIBXML2_STATIC_INCLUDE_DIR})
+ELSE ((NOT ${LibXml2_FOUND}) OR "${CMAKE_SYSTEM}" MATCHES "Linux")
+   include_directories(${LIBXML2_INCLUDE_DIR})
 ENDIF((NOT ${LibXml2_FOUND}) OR "${CMAKE_SYSTEM}" MATCHES "Linux")
-include_directories(${LIBXML2_INCLUDE_DIR})
 
 # sanitizer support
 # work around https://github.com/pypa/setuptools/issues/1928 with environment
