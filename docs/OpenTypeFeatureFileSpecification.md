@@ -23,17 +23,17 @@ Last updated 7 October 2024
   - [b. White space](#2.b)
   - [c. Keywords](#2.c)
   - [d. Special characters](#2.d)
-  - [e. Numbers and other metrics](#2.e)
+  - [e. Numbers, locations, and metrics](#2.e)
     - [i.    Number](#2.e.i)
     - [ii.   Metric](#2.e.ii)
-    - [iii.  Variable location](#2.e.iii)
-    - [iv.   Named location](#2.e.iv)
-    - [v.    Device table](#2.e.v)
-    - [vi.   Value record](#2.e.vi)
-    - [vii . Named value record](#2.e.vii)
-    - [viii. Contour point](#2.e.viii)
-    - [ix.   Anchor](#2.e.ix)
-    - [x.   Named anchor](#2.e.x)
+    - [iia.  Variable location specifier](#2.e.iia)
+    - [iib.  Named location](#2.e.iib)
+    - [iii.  Device table](#2.e.iii)
+    - [iv.   Value record](#2.e.iv)
+    - [v.    Named value record](#2.e.v)
+    - [vi.   Contour point](#2.e.vi)
+    - [vii.  Anchor](#2.e.vii)
+    - [viii. Named anchor](#2.e.viii)
   - [f. Glyphs](#2.f)
     - [i.  Glyph name](#2.f.i)
     - [ii. CID](#2.f.ii)
@@ -171,14 +171,14 @@ keywords have a global scope. Although many keywords may be used only in
 specific contexts, the same keyword is never used in different ways in different
 contexts.
 
-[`anchor`](#2.e.ix)<br>
-[`anchorDef`](#2.e.x)<br>
+[`anchor`](#2.e.vii)<br>
+[`anchorDef`](#2.e.viii)<br>
 [`anon`](#10)<br>
 [`anonymous`](#10)<br>
 [`by`](#5.a)<br>
-[`contourpoint`](#2.e.viii)<br>
+[`contourpoint`](#2.e.vi)<br>
 [`cursive`](#6.c)<br>
-[`device`](#2.e.v)  _[ Not implemented ]_<br>
+[`device`](#2.e.iii)  _[ Not implemented ]_<br>
 [`enum`](#6.b.ii)<br>
 [`enumerate`](#6.b.ii)<br>
 [`exclude_dflt`](#4.b.ii)<br>
@@ -192,14 +192,14 @@ contexts.
 [`include_dflt`](#4.b.ii)<br>
 [`language`](#4.b.ii)<br>
 [`languagesystem`](#4.b.i)<br>
-[`locationDef`](#XXX)<br>
+[`locationDef`](#2.e.iib)<br>
 [`lookup`](#4.e)<br>
 [`lookupflag`](#4.d)<br>
 [`mark`](#6.d) (can also be used as a [tag](#2.h) or [lookup block label](#2.i))<br>
 [`MarkAttachmentType`](#4.d)<br>
 [`markClass`](#4.f)<br>
 [`nameid`](#9.e)<br>
-`NULL` (used in [substitute](#5.a), [device](#2.e.v), [value record](#2.e.vi), [anchor](#2.e.ix))<br>
+`NULL` (used in [substitute](#5.a), [device](#2.e.iii), [value record](#2.e.iv), [anchor](#2.e.vii))<br>
 [`parameters`](#4.c)<br>
 [`pos`](#6)<br>
 [`position`](#6)<br>
@@ -214,7 +214,7 @@ contexts.
 [`table`](#9)<br>
 [`useExtension`](#4.e)<br>
 [`UseMarkFilteringSet`](#4.d)<br>
-[`valueRecordDef`](#2.e.vii)<br>
+[`valueRecordDef`](#2.e.v)<br>
 `excludeDFLT` (deprecated)<br>
 `includeDFLT` (deprecated)<br>
 
@@ -315,18 +315,18 @@ A `<number>` is a signed decimal integer (without leading zeros). For example:
     -150
     1000
 
-It is used in device tables [§[2.e.v](#2.e.v)] and contour points
-[§[2.e.viii](#2.e.viii)], as well as the values of various table fields [§[9](#9)].
+It is used in device tables [§[2.e.iii](#2.e.iii)] and contour points
+[§[2.e.vi](#2.e.vi)], as well as the values of various table fields [§[9](#9)].
 
 <a name="2.e.ii"></a>
 #### 2.e.ii. Metric
 
 A `<metric>` value is simply a `<number>` in font design units. It is used in
-value records [§[2.e.vi](#2.e.vi)] for positioning rules, as well as to express
+value records [§[2.e.iv](#2.e.iv)] for positioning rules, as well as to express
 the values of various table fields [§[9](#9)].
 
-<a name="2.e.iii"></a>
-#### 2.e.iii. Variable location specifier
+<a name="2.e.iia"></a>
+#### 2.e.iia. Variable location specifier
 
 A `<location>` represents a position in a font's variable design space.
 Variable locations are specified by a comma-separated list of axis location specifiers,
@@ -363,8 +363,8 @@ amount greater than the location value without the plus. A trailing hyphen
 analogously specifies an axis location value that is the minimal amount smaller
 than the value without it.
 
-<a name="2.e.iv"></a>
-#### 2.e.iv. Named location
+<a name="2.e.iib"></a>
+#### 2.e.iib. Named location
 
 The `locationDef` keyword is used to define a named location. This name can
 then be used in a value record in place of an axis value list. Named locations
@@ -386,11 +386,11 @@ locationDef wght=1000d @Extra_Black;
 locationDef wght=400u, opsz=20u @regular;
 ```
 
-<a name="2.e.v"></a>
-#### 2.e.v. Device table _[ Currently not implemented. ]_
+<a name="2.e.iii"></a>
+#### 2.e.iii. Device table _[ Currently not implemented. ]_
 
 A `<device>` represents a single device table or a null offset to it. It is used
-in value records [§[2.e.vi](#2.e.vi)], anchors [§[2.e.ix](#2.e.ix)], and
+in value records [§[2.e.iv](#2.e.iv)], anchors [§[2.e.vii](#2.e.vii)], and
 the GDEF table LigatureCaret statements [§[9.b](#9.b)].
 
 ##### Device format A:
@@ -418,8 +418,8 @@ For example:
 
 This format is used when an undefined `<device>` is needed in a list of `<device>` tables.
 
-<a name="2.e.vi"></a>
-#### 2.e.vi. Value record
+<a name="2.e.iv"></a>
+#### 2.e.iv. Value record
 
 A `<valuerecord>` is used in some positioning rules [§[6](#6)].
 
@@ -459,7 +459,7 @@ the vertical metric features.
 
 A `<vmetric>`, or record format B, is similar to A in how it is used, but
 specifes a single variable value. A `<location>` can either be a location
-specifier [§[2.e.iii](#2.e.iii)] or a location name [§[2.e.iv](#2.e.iv)]. A
+specifier [§[2.e.iia](#2.e.iia)] or a location name [§[2.e.iib](#2.e.iib)]. A
 `<metric>` not preceded by a `<location>` and colon is treated as the value for
 the default instance of the font. There must be at most one of these "bare"
 values. For example:
@@ -515,7 +515,7 @@ but all variable values are specified using the same set of locations.
 ```
 
 Here, the `<metric>` values represent the same adjustments as in format B. The
-`<device>` values represent device tables [§[2.e.v](#2.e.v)] for x placement, y
+`<device>` values represent device tables [§[2.e.iii](#2.e.iii)] for x placement, y
 placement, x advance, and y advance, in that order. This format lets the editor
 express the full functionality of an OpenType value record. For example:
 
@@ -550,8 +550,8 @@ For example:
 
 The name must have been defined with a `valueRecordDef` statement before being used.
 
-<a name="2.e.vii"></a>
-#### 2.e.vii. Named value record
+<a name="2.e.v"></a>
+#### 2.e.v. Named value record
 
 The `valueRecordDef` keyword is used to define a named value record. This name
 can then be used in value records instead of coordinates. It offers the
@@ -583,10 +583,10 @@ brackets, whether it is a single value or four value record. The
 `valueRecordDef` is a top level statement, and must be defined outside of
 feature blocks. It also must be defined before it is used.
 
-<a name="2.e.viii"></a>
-#### 2.e.viii. Contour point
+<a name="2.e.vi"></a>
+#### 2.e.vi. Contour point
 
-A `<contour point>` is used in anchors [§[2.e.ix](#2.e.ix)] and the GDEF table
+A `<contour point>` is used in anchors [§[2.e.vii](#2.e.vii)] and the GDEF table
 LigatureCaret statements [§[9.b](#9.b)]. It takes the format:
 
 ```fea
@@ -602,8 +602,8 @@ contourpoint 2
 **Note:** Since OpenType-CFF fonts do not specify contour point indexes, a
 `<contour point>` may be used only with TrueType OpenType fonts.
 
-<a name="2.e.ix"></a>
-#### 2.e.ix. Anchor
+<a name="2.e.vii"></a>
+#### 2.e.vii. Anchor
 
 An `<anchor>` is used in some positioning rules [§[6](#6)]. It takes 5 formats:
 
@@ -686,8 +686,8 @@ Second, the pair can be specified analogously to value record format D:
 Note the distinctive aspects of this format: There is only one set of parentheses,
 and each of the values in the pair are enclosed by angle brackets.
 
-<a name="2.e.x"></a>
-#### 2.e.x. Named anchor definition
+<a name="2.e.viii"></a>
+#### 2.e.viii. Named anchor definition
 
 The `anchorDef` keyword is used to define a named anchor. This name can then be
 used in anchor definitions instead of coordinates. It offers the advantage of
@@ -1458,7 +1458,7 @@ markClass <glyph|glyphclass> <anchor> <mark glyph class name>;
 Each additional mark statement for a mark class adds the referenced glyphs to
 that mark class.
 
-The `<anchor>` [§[2.e.ix](#2.e.ix)] indicates the point on the mark glyph(s)
+The `<anchor>` [§[2.e.vii](#2.e.vii)] indicates the point on the mark glyph(s)
 by which it is attached to a matching anchor point on a base glyph.
 If a mark glyph has an anchor point at `<anchor 300, 0>` and the base glyph
 has an anchor point at `<anchor 400 300>`, then the mark glyph will be shifted
@@ -2127,8 +2127,8 @@ abbreviated as `pos`. (The `enumerate` or `ignore` keywords may precede the
 the format of the rest of the rule.
 
 Glyph positioning is specified in terms of metrics [§[2.e.ii](#2.e.ii)], device
-tables [§[2.e.v](#2.e.v)], value records [§[2.e.vi](#2.e.vi)], and anchors
-[§[2.e.ix](#2.e.ix)]. In all positioning rules, these are inserted immediately
+tables [§[2.e.iii](#2.e.iii)], value records [§[2.e.iv](#2.e.iv)], and anchors
+[§[2.e.vii](#2.e.vii)]. In all positioning rules, these are inserted immediately
 after the glyph(s) they apply to, with the exception of Pair Pos format B.
 
 <a name="6.a"></a>
@@ -2141,7 +2141,7 @@ position <glyph|glyphclass> <valuerecord>;
 ```
 
 Here, the `<glyph|glyphclass>` is adjusted by the
-`<valuerecord>`[§[2.e.vi](#2.e.vi)]. For example, to reduce the left and right
+`<valuerecord>`[§[2.e.iv](#2.e.iv)]. For example, to reduce the left and right
 side-bearings of a glyph each by 80 design units:
 
 ```fea
@@ -2164,7 +2164,7 @@ position <glyph|glyphclass> <valuerecord>
          <glyph|glyphclass> <valuerecord>;
 ```
 
-The first `<valuerecord>`[§[2.e.vi](#2.e.vi)] corresponds to the first
+The first `<valuerecord>`[§[2.e.iv](#2.e.iv)] corresponds to the first
 `<glyph|glyphclass>`, and the second `<valuerecord>` corresponds to the second
 `<glyph|glyphclass>`. The following example illustrates an unusual way to
 specify a kern value of -100:
@@ -2333,7 +2333,7 @@ position cursive
     <anchor>;  # Exit anchor
 ```
 
-The first `<anchor>` [§[2.e.ix](#2.e.ix)] indicates the entry anchor point for
+The first `<anchor>` [§[2.e.vii](#2.e.vii)] indicates the entry anchor point for
 `<glyph|glyphclass>`; the second, the exit anchor point.
 
 For example, to define the entry point of glyph meem.medial to be at x=500,
@@ -2363,7 +2363,7 @@ position base <glyph|glyphclass> # base glyph(s)
     ;
 ```
 
-Each `<anchor>` [§[2.e.ix](#2.e.ix)] indicates the anchor point on the base
+Each `<anchor>` [§[2.e.vii](#2.e.vii)] indicates the anchor point on the base
 glyph(s) to which the mark class’ anchor point should be attached.
 
 A single Mark-To-Base statement must specify all the anchor points and their
@@ -3381,7 +3381,7 @@ table GDEF {
 
 The number of `<caret value>`s specified for a LigatureCaret must be: (number of
 ligature components) - 1.  When using LigatureCaretByPos, the position can be
-variable (analogous to value record [§[2.e.vi](#2.e.vi)] format B).
+variable (analogous to value record [§[2.e.iv](#2.e.iv)] format B).
 
 Only one `LigatureCaret` rule may be specified per glyph, whether it is
 `LigatureCaretByPos` or `LigatureCaretByIndex`.
@@ -4165,13 +4165,14 @@ along with the tag `sbit`.
 
 **v1.27 [7 October 2024]:**
 *   Added syntax for specifying variable values when building
-    a variable font, including [variable locations](#2.e.iii) and
-    [named locations](#2.e.vi). Modified sections include
-    [#2.e.iv value record](#2.e.iv), [#2.e.ix Anchor](#2.e.ix),
-    [#2.e.x named anchor](#2.e.x), [#9.b GDEF](#9.b), [#9.d hhea](#9.d),
-    [#9.f OS/2](#9.f), and [#9.g vhea](#9.g),
-    Some sections were also renumbered, and the handling of unusual
-    characters in [#9.h tags](#9.h) was changed.
+    a variable font, including [variable locations](#2.e.iia) and
+    [named locations](#2.e.iib). Modified sections include
+    [#2.e.iv value record](#2.e.iv), [#2.e.vii Anchor](#2.e.vii),
+    [#2.e.viii named anchor](#2.e.viii), [#9.b GDEF](#9.b), [#9.d hhea](#9.d),
+    [#9.f OS/2](#9.f), and [#9.g vhea](#9.g).
+    New sections [#2.e.iia](#2.e.iia) and [#2.e.iib](#2.e.iib) were inserted
+    using alpha suffixes to avoid renumbering existing sections.
+    The handling of unusual characters in [#2.h tags](#2.h) was also changed.
 
 **v1.26 [7 June 2021]:**
 *   Clarified syntax of [keywords](#2.c), [glyph names](#2.f.i),
