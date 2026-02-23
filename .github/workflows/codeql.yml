@@ -68,7 +68,7 @@ jobs:
 
       - name: Build cpp
         if: ${{ matrix.language == 'cpp' }}
-        run: python3 setup.py build
+        run: pip3 install .
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
