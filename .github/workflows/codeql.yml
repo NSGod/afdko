@@ -7,7 +7,6 @@ on:
       - 'docs/**'
       - 'tests/**'
   pull_request:
-    branches: [ "develop" ]
     paths-ignore:
       - 'docs/**'
       - 'tests/**'
