@@ -116,7 +116,7 @@ void cfwCharsetFree(cfwCtx g) {
         return;
     }
 
-    for (i = PREDEF_CNT; i < h->charsets.size; i++) {
+    for (i = PREDEF_CNT; i < h->charsets.cnt; i++) {
         dnaFREE(h->charsets.array[i].nameids);
     }
     dnaFREE(h->charsets);

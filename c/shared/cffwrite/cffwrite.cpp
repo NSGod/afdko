@@ -223,10 +223,10 @@ static void cfwControlFree(cfwCtx g) {
         return;
     }
 
-    for (i = 0; i < h->FontSet.size; i++) {
+    for (i = 0; i < h->FontSet.cnt; i++) {
         int j;
         cff_Font *font = &h->FontSet.array[i];
-        for (j = 0; j < font->FDArray.size; j++) {
+        for (j = 0; j < font->FDArray.cnt; j++) {
             FDInfo *fd = &font->FDArray.array[j];
             dnaFREE(fd->cff.dict);
             dnaFREE(fd->cff.Private);

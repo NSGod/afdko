@@ -356,7 +356,7 @@ void cfrFree(cfrCtx h) {
         return;
 
     /* Free dynamic arrays */
-    for (i = 0; i < h->FDArray.size; i++) {
+    for (i = 0; i < h->FDArray.cnt; i++) {
         dnaFREE(h->FDArray.array[i].Subrs);
     }
 

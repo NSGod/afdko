@@ -554,11 +554,11 @@ glyph:
 ;
 
 glyphName:
-    ESCGNAME | NAMELABEL | EXTNAME | AXISUNIT | NOTDEF
+    ESCGNAME | NAMELABEL | EXTNAME | NOTDEF
 ;
 
 label:
-    NAMELABEL | MARK | AXISUNIT
+    NAMELABEL | MARK
 ;
 
 tag:

@@ -72,7 +72,9 @@ static void put1(int c) {
 static void flushtext(FILE *fp) {
     int i;
     unsigned int j;
-    if (mainbuffer[inmain - 2] == '\r')
+    if (inmain == 0)
+        return;
+    if (inmain >= 2 && mainbuffer[inmain - 2] == '\r')
         inmain--;
     mainbuffer[inmain - 1] = ' ';
     j = inmain;

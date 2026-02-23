@@ -840,7 +840,7 @@ void hotFree(hotCtx g) {
     dnaFREE(g->font.kern.values);
 
     if (g->font.unenc.size != 0) {
-        for (i = 0; i < g->font.unenc.size; i++) {
+        for (i = 0; i < g->font.unenc.cnt; i++) {
             dnaFREE(g->font.unenc.array[i]);
         }
         dnaFREE(g->font.unenc);

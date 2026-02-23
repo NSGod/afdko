@@ -1,0 +1,14 @@
+# Test: Letter 'u' works as glyph name
+# Level 0: Foundation test
+# Dependencies: None
+# Tests: AXISUNIT removed from default mode - 'u' is not ambiguous
+
+languagesystem DFLT dflt;
+
+# The letter 'u' should work as a glyph name
+# This would fail if AXISUNIT were still in default mode
+feature test {
+    sub u by a;
+    sub u a by u;
+    @uclass = [u a b];
+} test;

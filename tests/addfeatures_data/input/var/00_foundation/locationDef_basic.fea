@@ -1,0 +1,22 @@
+# Test: Basic location definitions
+# Level 0: Foundation test
+# Dependencies: None
+# Tests: Simple locationDef with single and multiple axes
+
+languagesystem DFLT dflt;
+
+# Single axis locations
+locationDef wght=200d @Light;
+locationDef wght=400d @Regular;
+locationDef wght=700d @Bold;
+locationDef wght=900d @Black;
+
+# Single axis with different unit (normalized)
+locationDef wght=200n @LightN;
+locationDef wght=1000n @BlackN;
+
+# Multiple axes
+locationDef wght=400d,opsz=20d @RegularText;
+locationDef wght=700d,opsz=20d @BoldText;
+locationDef wght=400d,opsz=60d @RegularDisplay;
+locationDef wght=700d,opsz=60d @BoldDisplay;

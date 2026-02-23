@@ -94,7 +94,7 @@ void cfwFdselectFree(cfwCtx g) {
         return;
     }
 
-    for (i = 0; i < h->selectors.size; i++) {
+    for (i = 0; i < h->selectors.cnt; i++) {
         dnaFREE(h->selectors.array[i].fds);
     }
     dnaFREE(h->selectors);

@@ -112,7 +112,7 @@ void cfwEncodingFree(cfwCtx g) {
         return;
     }
 
-    for (i = 0; i < h->encodings.size; i++) {
+    for (i = 0; i < h->encodings.cnt; i++) {
         Encoding *encoding = &h->encodings.array[i];
         dnaFREE(encoding->codes);
         dnaFREE(encoding->supcodes);

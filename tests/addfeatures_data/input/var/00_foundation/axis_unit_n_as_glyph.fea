@@ -1,0 +1,14 @@
+# Test: Letter 'n' works as glyph name
+# Level 0: Foundation test
+# Dependencies: None
+# Tests: AXISUNIT removed from default mode - 'n' is not ambiguous
+
+languagesystem DFLT dflt;
+
+# The letter 'n' should work as a glyph name
+# This would fail if AXISUNIT were still in default mode
+feature test {
+    sub n by a;
+    sub n a by n;
+    @nclass = [n a b];
+} test;

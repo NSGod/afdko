@@ -1,0 +1,9 @@
+# Test: Error when referencing undefined axis
+# Level: Errors (no dependencies)
+# Tests: Proper error message for non-existent axis
+# Expected: Error about undefined axis 'fooz'
+
+languagesystem DFLT dflt;
+
+# This should fail - 'fooz' is not defined in font.designspace
+locationDef fooz=400d @BadLocation;

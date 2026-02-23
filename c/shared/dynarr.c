@@ -184,7 +184,7 @@ long dnaExtend(void *object, size_t elemsize, long length) {
 /* Free dynamic array object. */
 void dnaFreeObj(void *object) {
     dnaGeneric *da = (dnaGeneric *)object;
-    if (da->size != 0) {
+    if (da->size != 0 && da->ctx != NULL) {
         dnaCtx h = da->ctx;
         h->mem.manage(&h->mem, da->array, 0);
         da->size = 0;

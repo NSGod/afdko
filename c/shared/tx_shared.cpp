@@ -7147,7 +7147,7 @@ void txFree(txCtx h) {
     dnaFREE(h->cef.lookup);
     dnaFREE(h->t1w.gnames);
     dnaFREE(h->dcf.global.stemcnt);
-    for (i = 0; i < h->dcf.local.size; i++)
+    for (i = 0; i < h->dcf.local.cnt; i++)
         dnaFREE(h->dcf.local.array[i].stemcnt);
     dnaFREE(h->dcf.local);
     dnaFREE(h->dcf.varRegionInfo);

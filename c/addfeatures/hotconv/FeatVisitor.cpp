@@ -67,8 +67,6 @@ FeatVisitor::~FeatVisitor() {
 void FeatVisitor::Parse(bool do_includes) {
     std::ifstream stream;
 
-    fc->g->logger->set_context("feat_file", sINHERIT, newFileMsg().c_str());
-
     if ( depth >= MAX_INCL ) {
         fc->featMsg(sFATAL, "Can't include [%s]; maximum include levels <%d> reached",
                     pathname.c_str(), MAX_INCL);
@@ -112,6 +110,8 @@ void FeatVisitor::Parse(bool do_includes) {
         }
         assignDirName(fullname, dirname);
     }
+
+    fc->g->logger->set_context("feat_file", sINHERIT, newFileMsg().c_str());
 
     input = new antlr4::ANTLRInputStream(stream);
     lexer = new FeatLexer(input);
@@ -226,8 +226,8 @@ void FeatVisitor::FeatErrorListener::syntaxError(antlr4::Recognizer *,
                                                  size_t, size_t,
                                                  const std::string &msg,
                                                  std::exception_ptr) {
-    // Check if this is a "missing ';'" error
-    if (msg.find("missing ';'") != std::string::npos && t != nullptr) {
+    // Check if this is a "missing ';'" error (ANTLR may report as "missing ';'" or "missing SEMI")
+    if ((msg.find("missing ';'") != std::string::npos || msg.find("missing SEMI") != std::string::npos) && t != nullptr) {
         // Get the previous token to report the error at the end of the previous line
         antlr4::Token *prevToken = v.tokens->LT(-1);
         if (prevToken != nullptr && prevToken->getTokenIndex() < t->getTokenIndex()) {

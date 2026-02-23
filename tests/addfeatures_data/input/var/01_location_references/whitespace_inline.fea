@@ -1,0 +1,26 @@
+# Test: Inline location whitespace variations - THE KEY FIX
+# Level 1: Location references
+# Dependencies: 00_foundation/locationDef_basic.fea
+# Tests: Inline locations work WITHOUT spaces around colon
+#        This is the core fix from the lexer modes implementation
+
+languagesystem DFLT dflt;
+
+# Define a named location for comparison
+locationDef wght=400d @Regular;
+
+# THE KEY TEST: No spaces around colon (this is what the fix enables!)
+valueRecordDef (wght=400n:50) VAL_NO_SPACE;
+valueRecordDef (wght=400n:50 wght=700n:60) VAL_MULTI_NO_SPACE;
+
+# These should also work (backward compatibility)
+valueRecordDef (wght=400n : 50) VAL_WITH_SPACES;
+valueRecordDef (wght=400n :50) VAL_SPACE_BEFORE;
+valueRecordDef (wght=400n: 50) VAL_SPACE_AFTER;
+
+# Mixed spacing
+valueRecordDef (wght=400n:50 wght=700n : 60) VAL_MIXED;
+
+# In anchors too
+anchorDef (250 wght=400n:240 wght=700n:260) 620 anc_no_space;
+anchorDef (250 wght=400n : 240 wght=700n : 260) 620 anc_with_spaces;

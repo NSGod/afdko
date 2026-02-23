@@ -528,7 +528,7 @@ void t1rFree(t1rCtx h) {
     if (h == NULL)
         return;
 
-    for (i = 0; i < h->FDArray.size; i++)
+    for (i = 0; i < h->FDArray.cnt; i++)
         dnaFREE(h->FDArray.array[i].subrs.offset);
 
     dnaFREE(h->FDArray);

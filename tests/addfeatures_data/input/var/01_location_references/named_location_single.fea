@@ -1,0 +1,18 @@
+# Test: Named location references
+# Level 1: Location references
+# Dependencies: 00_foundation/locationDef_basic.fea
+# Tests: Using @location labels in value records and anchors
+
+languagesystem DFLT dflt;
+
+# Define locations
+locationDef wght=400d @Regular;
+locationDef wght=700d @Bold;
+
+# Use named locations in value records
+valueRecordDef (@Regular:50) VAL_REG;
+valueRecordDef (@Bold:60) VAL_BOLD;
+valueRecordDef (@Regular:50 @Bold:60) VAL_BOTH;
+
+# Use named locations in anchors
+anchorDef (250 @Regular:240 @Bold:260) 620 anc1;

@@ -7,7 +7,7 @@ import sys
 import os
 
 antlr_program = "antlr"
-antlr_version = "4.13.1"
+antlr_version = "4.13.2"
 
 antlr_args = ['-no-listener', '-Dlanguage=Cpp']
 

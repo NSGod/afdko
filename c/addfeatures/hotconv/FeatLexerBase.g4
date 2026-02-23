@@ -7,6 +7,9 @@
 
 lexer grammar FeatLexerBase;
 
+// Declare token types used in modes
+tokens { AXISUNIT }
+
 COMMENT                 : '#' ~[\r\n]* -> skip ;
 WHITESPACE              : [ \t\r\n]+ -> skip ;
 
@@ -64,7 +67,7 @@ CONTOURPOINT            : 'contourpoint' ;
 ANCHOR                  : 'anchor' ;
 ANCHOR_DEF              : 'anchorDef' ;
 VALUE_RECORD_DEF        : 'valueRecordDef' ;
-LOCATION_DEF            : 'locationDef' ;
+LOCATION_DEF            : 'locationDef' -> pushMode(LocationDefMode) ;
 MARK                    : 'mark';
 MARK_CLASS              : 'markClass' ;
 CURSIVE                 : 'cursive' ;
@@ -155,7 +158,7 @@ LCBRACE                 : '{' ;
 RCBRACE                 : '}' ;
 LBRACKET                : '[' ;
 RBRACKET                : ']' ;
-LPAREN                  : '(' ;
+LPAREN                  : '(' -> pushMode(VarValue) ;
 RPAREN                  : ')' ;
 HYPHEN                  : '-' ;
 PLUS                    : '+' ;
@@ -172,7 +175,7 @@ fragment GCCHR          : LCHR | '-' ;
 LNAME                   : '@' GNST LCHR* ;
 GCLASS                  : '@' GNST GCCHR* ;
 
-AXISUNIT                : 'u' | 'd' | 'n' ;
+// AXISUNIT removed from default mode - only exists in LocationDefMode and VarValue
 CID                     : '\\' ( '0' .. '9' )+ ;
 fragment GNCHR          : GCCHR | '+' | '*' | ':' | '~' | '^' | '|' ;
 ESCGNAME                : '\\' GNST GNCHR* ;
@@ -192,3 +195,65 @@ mode Ifile;
 
 IFILE                   : ~')'+ ;
 I_LPAREN                : ')' -> popMode ;
+
+// ============================================================================
+// LOCATIONDEFMODE (for: locationDef wght=400d, opsz=12d @name;)
+// ============================================================================
+mode LocationDefMode;
+
+// Axis unit tokens - ONLY defined in this mode
+LD_AXISUNIT             : ('u' | 'd' | 'n') -> type(AXISUNIT) ;
+
+// Punctuation needed in location definitions
+LD_EQUALS               : '=' -> type(EQUALS) ;
+LD_COMMA                : ',' -> type(COMMA) ;
+LD_HYPHEN               : '-' -> type(HYPHEN) ;
+LD_PLUS                 : '+' -> type(PLUS) ;
+LD_SEMI                 : ';' -> type(SEMI), popMode ;  // Exit mode on semicolon
+
+// Identifiers
+LD_NAMELABEL            : GNST LCHR* -> type(NAMELABEL) ;  // Axis tags (wght, opsz)
+LD_LNAME                : '@' GNST LCHR* -> type(LNAME) ;  // Location name (@Regular)
+
+// Numbers
+LD_POINTNUM             : '-'? ( '0' .. '9' )+ '.' ( '0' .. '9' )+ -> type(POINTNUM) ;
+LD_NUM                  : '-'? ( '1' .. '9' ( '0' .. '9' )* | '0' ) -> type(NUM) ;
+
+// Whitespace
+LD_WHITESPACE           : [ \t\r\n]+ -> skip ;
+
+// NOTE: NO EXTNAME in this mode - prevents d:47 ambiguity
+
+// ============================================================================
+// VARVALUE MODE (for: (50 wght=400d:47 @Regular:54))
+// ============================================================================
+mode VarValue;
+
+// Axis unit tokens - ONLY defined in this mode
+VV_AXISUNIT             : ('u' | 'd' | 'n') -> type(AXISUNIT) ;
+
+// Punctuation needed in variable values
+VV_COLON                : ':' -> type(COLON) ;          // Key addition for values
+VV_EQUALS               : '=' -> type(EQUALS) ;
+VV_COMMA                : ',' -> type(COMMA) ;
+VV_HYPHEN               : '-' -> type(HYPHEN) ;
+VV_PLUS                 : '+' -> type(PLUS) ;
+VV_LPAREN               : '(' -> type(LPAREN), pushMode(VarValue) ;  // Nested parens
+VV_RPAREN               : ')' -> type(RPAREN), popMode ;  // Exit mode on close paren
+
+// Angle brackets for 4-value positioning records
+VV_BEGINVALUE           : '<' -> type(BEGINVALUE) ;
+VV_ENDVALUE             : '>' -> type(ENDVALUE) ;
+
+// Identifiers
+VV_NAMELABEL            : GNST LCHR* -> type(NAMELABEL) ;  // Axis tags
+VV_LNAME                : '@' GNST LCHR* -> type(LNAME) ;  // Location names
+
+// Numbers
+VV_POINTNUM             : '-'? ( '0' .. '9' )+ '.' ( '0' .. '9' )+ -> type(POINTNUM) ;
+VV_NUM                  : '-'? ( '1' .. '9' ( '0' .. '9' )* | '0' ) -> type(NUM) ;
+
+// Whitespace
+VV_WHITESPACE           : [ \t\r\n]+ -> skip ;
+
+// NOTE: NO EXTNAME in this mode - prevents d:47 ambiguity

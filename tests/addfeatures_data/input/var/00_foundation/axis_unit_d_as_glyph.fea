@@ -1,0 +1,14 @@
+# Test: Letter 'd' works as glyph name
+# Level 0: Foundation test
+# Dependencies: None
+# Tests: AXISUNIT removed from default mode - 'd' is not ambiguous
+
+languagesystem DFLT dflt;
+
+# The letter 'd' should work as a glyph name
+# This would fail if AXISUNIT were still in default mode
+feature test {
+    sub d by a;
+    sub d a by d;
+    @dclass = [d a b];
+} test;

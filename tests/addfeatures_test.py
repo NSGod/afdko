@@ -8,6 +8,12 @@ from differ import main as differ, SPLIT_MARKER
 from test_utils import (get_input_path, get_expected_path, get_temp_file_path,
                         generate_ttx_dump, generate_spot_dumptables)
 
+try:
+    from shaper import Shaper, compare_values
+    HAS_SHAPER = True
+except ImportError:
+    HAS_SHAPER = False
+
 TOOL = 'addfeatures'
 CMD = ['-t', TOOL]
 
@@ -823,6 +829,435 @@ def test_negative_advance_width_bug1798():
     # Should report error about negative advance width
     assert (b"has negative advance width" in output)
     assert (b"Advance widths must be non-negative" in output)
+
+
+def test_missing_include_error_context():
+    """Test that missing include files report error in the parent file, not 'in' the missing file.
+
+    Regression test: Previously, set_context() was called before file validation,
+    causing errors to be reported as if they occurred "in" the non-existent file.
+    After the fix, errors correctly reference the parent file that contains the include statement.
+    """
+    input_filename = "font.cff"
+    feat_filename = "missing_include_test.fea"
+    actual_path = get_temp_file_path()
+
+    stderr_path = runner(
+        CMD + ['-s', '-e', '-o',
+               'f', f'_{get_input_path(input_filename)}',
+               'ff', f'_{get_input_path(feat_filename)}',
+               'o', f'_{actual_path}'])
+
+    with open(stderr_path, 'rb') as f:
+        output = f.read()
+
+    # Should report the error is in the parent file (missing_include_test.fea)
+    assert b"missing_include_test.fea" in output
+
+    # Should report that the included file (nonexistent_file.fea) was not found
+    assert b"nonexistent_file.fea" in output
+    assert b"not found" in output.lower()
+
+    # Should NOT say the error is "in feature file 'nonexistent_file.fea'"
+    # (that would be the bug - reporting an error "in" a file that doesn't exist)
+    assert b"in feature file 'nonexistent_file.fea'" not in output
+
+
+# ---------------------------------
+# Variable Font Grammar Tests
+# ---------------------------------
+
+def test_var_locationDef_basic():
+    """Test that basic location definitions parse correctly."""
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/00_foundation/locationDef_basic.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    runner(CMD + ['-o',
+                  'f', f'_{get_input_path(input_filename)}',
+                  'ff', f'_{get_input_path(feat_filename)}',
+                  'ds', f'_{get_input_path(ds_filename)}',
+                  'o', f'_{actual_path}'])
+    # If it builds without error, test passes
+    assert os.path.exists(actual_path)
+
+
+def test_var_axis_unit_d_as_glyph():
+    """Test that 'd' can be used as a glyph name (AXISUNIT removed from default mode)."""
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/00_foundation/axis_unit_d_as_glyph.fea"
+    actual_path = get_temp_file_path()
+
+    runner(CMD + ['-o',
+                  'f', f'_{get_input_path(input_filename)}',
+                  'ff', f'_{get_input_path(feat_filename)}',
+                  'o', f'_{actual_path}'])
+    # If it builds, the test passes - proves 'd' is not ambiguous
+    assert os.path.exists(actual_path)
+
+    # Note: Shaping verification would require uharfbuzz with feature control
+    # For now, successful build is sufficient proof that 'd' works as glyph name
+
+
+@pytest.mark.parametrize('axis_letter', ['d', 'u', 'n'])
+def test_var_axis_units_as_glyphs(axis_letter):
+    """Test that axis unit letters (d, u, n) can be used as glyph names."""
+    input_filename = "var/font_var.otf"
+    feat_filename = f"var/00_foundation/axis_unit_{axis_letter}_as_glyph.fea"
+    actual_path = get_temp_file_path()
+
+    runner(CMD + ['-o',
+                  'f', f'_{get_input_path(input_filename)}',
+                  'ff', f'_{get_input_path(feat_filename)}',
+                  'o', f'_{actual_path}'])
+    assert os.path.exists(actual_path)
+
+
+def test_var_whitespace_inline_parsing():
+    """Test that inline locations work without spaces - THE KEY FIX."""
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/01_location_references/whitespace_inline.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    # This may produce semantic errors (duplicate location values) but should parse
+    stderr_path = runner(CMD + ['-s', '-e', '-o',
+                                'f', f'_{get_input_path(input_filename)}',
+                                'ff', f'_{get_input_path(feat_filename)}',
+                                'ds', f'_{get_input_path(ds_filename)}',
+                                'o', f'_{actual_path}'])
+
+    # Check for parse errors vs semantic errors
+    with open(stderr_path, 'rb') as f:
+        output = f.read()
+
+    # Should NOT have syntax/parse errors
+    assert b'syntax error' not in output.lower()
+    assert b'mismatched input' not in output.lower()
+    assert b'no viable alternative' not in output.lower()
+
+    # Semantic errors like "Duplicate values" are expected and OK
+
+
+def test_var_error_undefined_axis():
+    """Test that referencing an undefined axis produces proper error."""
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/99_errors/error_undefined_axis.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    stderr_path = runner(CMD + ['-s', '-e', '-o',
+                                'f', f'_{get_input_path(input_filename)}',
+                                'ff', f'_{get_input_path(feat_filename)}',
+                                'ds', f'_{get_input_path(ds_filename)}',
+                                'o', f'_{actual_path}'])
+
+    with open(stderr_path, 'rb') as f:
+        output = f.read()
+
+    # Should mention the undefined axis
+    assert b'fooz' in output or b'not defined' in output.lower()
+
+
+def test_var_error_location_identifiers():
+    """Test various invalid location identifier patterns."""
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/99_errors/error_location_identifiers.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    stderr_path = runner(CMD + ['-s', '-e', '-o',
+                                'f', f'_{get_input_path(input_filename)}',
+                                'ff', f'_{get_input_path(feat_filename)}',
+                                'ds', f'_{get_input_path(ds_filename)}',
+                                'o', f'_{actual_path}'])
+
+    with open(stderr_path, 'rb') as f:
+        output = f.read()
+
+    # Should have multiple errors:
+    # - Parse errors for invalid location name syntax
+    # - Semantic errors for axis tag lengths
+    # At least verify we got errors (not empty output)
+    assert len(output) > 100  # Should have substantial error output
+    assert b'ERROR' in output or b'error' in output
+
+
+def test_var_pairwise_kerning():
+    """Test that variable pairwise kerning values are correctly compiled and applied.
+
+    This test verifies multiple positioning value formats:
+    1. Simple xAdvance adjustment (single value)
+    2. Four-value with angle brackets inside parens (only xAdvance varies)
+    3. Four-value with xPlacement + xAdvance varying
+    4. Four-value with yPlacement varying
+    5. All three positioning values varying together (xPlacement, yPlacement, xAdvance)
+    6. Just xPlacement and yPlacement (no xAdvance)
+    7. Angle brackets OUTSIDE - traditional four-value syntax with variable values
+    8. TWO AXES - variation on both wght and opsz simultaneously
+
+    Verifies the entire pipeline:
+    - Feature file with variable kerning syntax parses correctly
+    - addfeatures compiles variable positioning into GPOS with ItemVariationStore
+    - HarfBuzz applies the variable kerning at different design space locations
+    - The values interpolate correctly between masters
+    - Two-axis variation works with bilinear interpolation
+    """
+    if not HAS_SHAPER:
+        pytest.skip("Requires uharfbuzz for shaping tests")
+
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/02_value_constructs/pairwise_kerning.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    # Build font with variable kerning (4 different pairs with different formats)
+    runner(CMD + ['-o',
+                  'f', f'_{get_input_path(input_filename)}',
+                  'ff', f'_{get_input_path(feat_filename)}',
+                  'ds', f'_{get_input_path(ds_filename)}',
+                  'o', f'_{actual_path}'])
+
+    # Shape with built font at different weights
+    test_shaper = Shaper(actual_path)
+
+    # Test Format 1: Simple xAdvance (A-a pair)
+    # Expected: wght=200:-30, wght=400:-40, wght=900:-60
+    for wght, expected_kern in [(200, -30), (400, -40), (900, -60)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_a = test_shaper.shape('a', location={'wght': wght})
+        result_Aa = test_shaper.shape('Aa', location={'wght': wght})
+
+        actual_kern = sum(result_Aa.advances) - (result_A.advances[0] + result_a.advances[0])
+        assert actual_kern == expected_kern, \
+            f"A-a (simple xAdvance) wght={wght}: expected {expected_kern}, got {actual_kern}"
+
+    # Test Format 2: Four-value with angle brackets inside (A-b pair)
+    # Expected: wght=200:-35, wght=400:-45, wght=900:-65
+    for wght, expected_kern in [(200, -35), (400, -45), (900, -65)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_b = test_shaper.shape('b', location={'wght': wght})
+        result_Ab = test_shaper.shape('Ab', location={'wght': wght})
+
+        actual_kern = sum(result_Ab.advances) - (result_A.advances[0] + result_b.advances[0])
+        assert actual_kern == expected_kern, \
+            f"A-b (four-value) wght={wght}: expected {expected_kern}, got {actual_kern}"
+
+    # Test Format 3: xPlacement + xAdvance varying (A-c pair)
+    # Expected xAdvance: wght=200:-35, wght=400:-50, wght=900:-70
+    # Expected xPlacement on A (first glyph): wght=200:5, wght=400:10, wght=900:15
+    for wght, expected_kern, expected_x_offset in [(200, -35, 5), (400, -50, 10), (900, -70, 15)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_c = test_shaper.shape('c', location={'wght': wght})
+        result_Ac = test_shaper.shape('Ac', location={'wght': wght})
+
+        actual_kern = sum(result_Ac.advances) - (result_A.advances[0] + result_c.advances[0])
+        actual_x_offset = result_Ac.positions[0][0]  # xOffset of first glyph
+
+        assert actual_kern == expected_kern, \
+            f"A-c (xPlacement+xAdvance) wght={wght}: expected kern {expected_kern}, got {actual_kern}"
+        assert actual_x_offset == expected_x_offset, \
+            f"A-c (xPlacement) wght={wght}: expected offset {expected_x_offset}, got {actual_x_offset}"
+
+    # Test Format 4: yPlacement variation (A-d pair)
+    # Expected xAdvance: wght=200:-30, wght=400:-40, wght=900:-60
+    # Expected yPlacement on A: wght=200:-3, wght=400:-5, wght=900:-8
+    for wght, expected_kern, expected_y_offset in [(200, -30, -3), (400, -40, -5), (900, -60, -8)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_d = test_shaper.shape('d', location={'wght': wght})
+        result_Ad = test_shaper.shape('Ad', location={'wght': wght})
+
+        actual_kern = sum(result_Ad.advances) - (result_A.advances[0] + result_d.advances[0])
+        actual_y_offset = result_Ad.positions[0][1]  # yOffset of first glyph
+
+        assert actual_kern == expected_kern, \
+            f"A-d (yPlacement) wght={wght}: expected kern {expected_kern}, got {actual_kern}"
+        assert actual_y_offset == expected_y_offset, \
+            f"A-d (yPlacement) wght={wght}: expected offset {expected_y_offset}, got {actual_y_offset}"
+
+    # Test Format 5: ALL THREE positioning values varying (A-e pair)
+    # Expected xAdvance: wght=200:-35, wght=400:-50, wght=900:-70
+    # Expected xPlacement on A: wght=200:5, wght=400:10, wght=900:15
+    # Expected yPlacement on A: wght=200:-3, wght=400:-5, wght=900:-8
+    for wght, exp_kern, exp_x_off, exp_y_off in [(200, -35, 5, -3), (400, -50, 10, -5), (900, -70, 15, -8)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_e = test_shaper.shape('e', location={'wght': wght})
+        result_Ae = test_shaper.shape('Ae', location={'wght': wght})
+
+        actual_kern = sum(result_Ae.advances) - (result_A.advances[0] + result_e.advances[0])
+        actual_x_offset = result_Ae.positions[0][0]
+        actual_y_offset = result_Ae.positions[0][1]
+
+        assert actual_kern == exp_kern, \
+            f"A-e (all three) wght={wght}: expected kern {exp_kern}, got {actual_kern}"
+        assert actual_x_offset == exp_x_off, \
+            f"A-e (xPlacement) wght={wght}: expected {exp_x_off}, got {actual_x_offset}"
+        assert actual_y_offset == exp_y_off, \
+            f"A-e (yPlacement) wght={wght}: expected {exp_y_off}, got {actual_y_offset}"
+
+    # Test Format 6: Just xPlacement and yPlacement (no xAdvance) (A-n pair)
+    # Expected xAdvance: 0 (no kerning)
+    # Expected xPlacement on A: wght=200:15, wght=400:20, wght=900:25
+    # Expected yPlacement on A: wght=200:5, wght=400:10, wght=900:15
+    for wght, exp_x_off, exp_y_off in [(200, 15, 5), (400, 20, 10), (900, 25, 15)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_n = test_shaper.shape('n', location={'wght': wght})
+        result_An = test_shaper.shape('An', location={'wght': wght})
+
+        actual_kern = sum(result_An.advances) - (result_A.advances[0] + result_n.advances[0])
+        actual_x_offset = result_An.positions[0][0]
+        actual_y_offset = result_An.positions[0][1]
+
+        assert actual_kern == 0, \
+            f"A-n (no xAdvance) wght={wght}: expected no kerning, got {actual_kern}"
+        assert actual_x_offset == exp_x_off, \
+            f"A-n (xPlacement) wght={wght}: expected {exp_x_off}, got {actual_x_offset}"
+        assert actual_y_offset == exp_y_off, \
+            f"A-n (yPlacement) wght={wght}: expected {exp_y_off}, got {actual_y_offset}"
+
+    # Test Format 7: Angle brackets OUTSIDE - traditional four-value syntax (A-u pair)
+    # xPlacement: wght=200:10, wght=400:20 (default, interpolated), wght=900:30
+    # yPlacement: 0 (constant)
+    # xAdvance: wght=200:-40, wght=400:-60 (default, interpolated), wght=900:-80
+    # yAdvance: 0 (constant)
+    for wght, exp_x_off, exp_kern in [(200, 10, -40), (400, 20, -60), (900, 30, -80)]:
+        result_A = test_shaper.shape('A', location={'wght': wght})
+        result_u = test_shaper.shape('u', location={'wght': wght})
+        result_Au = test_shaper.shape('Au', location={'wght': wght})
+
+        actual_kern = sum(result_Au.advances) - (result_A.advances[0] + result_u.advances[0])
+        actual_x_offset = result_Au.positions[0][0]
+        actual_y_offset = result_Au.positions[0][1]
+
+        assert compare_values(actual_kern, exp_kern, tolerance=1), \
+            f"A-u (angle brackets outside xAdvance) wght={wght}: expected {exp_kern}, got {actual_kern}"
+        assert compare_values(actual_x_offset, exp_x_off, tolerance=1), \
+            f"A-u (angle brackets outside xPlacement) wght={wght}: expected {exp_x_off}, got {actual_x_offset}"
+        assert actual_y_offset == 0, \
+            f"A-u (angle brackets outside yPlacement) wght={wght}: expected 0, got {actual_y_offset}"
+
+    # Test Format 8: TWO AXES - variation on both wght and opsz (b-c pair)
+    # Masters at four corners of design space:
+    #   wght=200, opsz=8:  kern=-20
+    #   wght=200, opsz=60: kern=-25
+    #   wght=900, opsz=8:  kern=-50
+    #   wght=900, opsz=60: kern=-40
+    # Default (wght=400, opsz=20): kern=-30
+    test_cases_two_axis = [
+        # (wght, opsz, expected_kern, description)
+        (200, 8, -20, "Light/Small corner"),
+        (200, 60, -25, "Light/Large corner"),
+        (900, 8, -50, "Heavy/Small corner"),
+        (900, 60, -40, "Heavy/Large corner"),
+        (400, 20, -30, "Default (center, interpolated)"),
+    ]
+
+    for wght, opsz, exp_kern, description in test_cases_two_axis:
+        result_b = test_shaper.shape('b', location={'wght': wght, 'opsz': opsz})
+        result_c = test_shaper.shape('c', location={'wght': wght, 'opsz': opsz})
+        result_bc = test_shaper.shape('bc', location={'wght': wght, 'opsz': opsz})
+
+        actual_kern = sum(result_bc.advances) - (result_b.advances[0] + result_c.advances[0])
+
+        # Use tolerance for interpolated values
+        tolerance = 2 if wght in [200, 900] and opsz in [8, 60] else 3
+        assert compare_values(actual_kern, exp_kern, tolerance=tolerance), \
+            f"b-c (two axes) {description} wght={wght}, opsz={opsz}: expected {exp_kern}, got {actual_kern}"
+
+
+def test_var_mark_positioning():
+    """Test that variable mark positioning values are correctly compiled and applied.
+
+    This test verifies multiple mark positioning formats:
+    1. Variable base anchor with simple mark anchor
+    2. Both base and mark anchors varying (x and y)
+    3. Four-value anchor format with angle brackets
+    4. Two axes - mark positioning varying with both wght and opsz
+
+    Tests mark-to-base positioning where anchors have variable coordinates.
+    Verifies that mark offsets change correctly across the design space.
+    """
+    if not HAS_SHAPER:
+        pytest.skip("Requires uharfbuzz for shaping tests")
+
+    input_filename = "var/font_var.otf"
+    feat_filename = "var/02_value_constructs/mark_positioning.fea"
+    ds_filename = "var/font.designspace"
+    actual_path = get_temp_file_path()
+
+    # Build font with variable mark positioning
+    runner(CMD + ['-o',
+                  'f', f'_{get_input_path(input_filename)}',
+                  'ff', f'_{get_input_path(feat_filename)}',
+                  'ds', f'_{get_input_path(ds_filename)}',
+                  'o', f'_{actual_path}'])
+
+    # Shape with built font
+    test_shaper = Shaper(actual_path)
+
+    # Test 1: A + acute (uni0301) - variable base anchor
+    # Base anchor x: 300→280→320, Mark anchor x: 250→240→260
+    # Expected: base_anchor - mark_anchor = 50→40→60
+    # Formula: absolute_x = base_advance + mark_x_offset
+    for wght, expected_abs_x in [(200, 40), (400, 50), (900, 60)]:
+        result_base = test_shaper.shape('A', location={'wght': wght})
+        result_mark = test_shaper.shape('A\u0301', location={'wght': wght})
+
+        base_advance = result_base.advances[0]
+        mark_x_offset = result_mark.positions[1][0]
+        mark_y_offset = result_mark.positions[1][1]
+
+        # Calculate absolute mark anchor position
+        absolute_x = base_advance + mark_x_offset
+
+        assert compare_values(absolute_x, expected_abs_x, tolerance=1), \
+            f"A+acute wght={wght}: expected absolute x {expected_abs_x}, got {absolute_x}"
+        assert compare_values(mark_y_offset, 80, tolerance=1), \
+            f"A+acute wght={wght}: expected y offset 80, got {mark_y_offset}"
+
+    # Test 2: a + grave (uni0300) - both anchors vary in x and y
+    # Base y: 550→540→560, Mark y: 600 (constant)
+    # Expected y offset: -50→-60→-40
+    results_a = {}
+    for wght in [200, 400, 900]:
+        result = test_shaper.shape('a\u0300', location={'wght': wght})
+        results_a[wght] = result.positions[1]
+
+    # Check y-offset varies correctly
+    assert compare_values(results_a[200][1], -60, tolerance=1), \
+        f"a+grave wght=200: expected y offset -60, got {results_a[200][1]}"
+    assert compare_values(results_a[400][1], -50, tolerance=1), \
+        f"a+grave wght=400: expected y offset -50, got {results_a[400][1]}"
+    assert compare_values(results_a[900][1], -40, tolerance=1), \
+        f"a+grave wght=900: expected y offset -40, got {results_a[900][1]}"
+
+    # Test 3: b + dieresis (uni0308) - four-value anchor format with both x and y varying
+    # Base y: 700→695→705, Mark y: 620→615→625
+    # Expected y offset: 80 (same - both vary proportionally)
+    for wght in [200, 400, 900]:
+        result = test_shaper.shape('b\u0308', location={'wght': wght})
+        mark_y_offset = result.positions[1][1]
+        assert compare_values(mark_y_offset, 80, tolerance=1), \
+            f"b+dieresis wght={wght}: expected y offset 80, got {mark_y_offset}"
+
+    # Test 4: c + acute (uni0301) - TWO AXES
+    # Y-coordinate: varies with opsz
+    # Testing corners of design space for y-offset
+    test_cases_two_axis = [
+        # (wght, opsz, exp_y_offset, description)
+        (200, 8, 70, "Light/Small"),      # base=(275,690), mark=(240,620)
+        (200, 60, 90, "Light/Large"),     # base=(280,710), mark=(240,620)
+        (900, 8, 70, "Heavy/Small"),      # base=(315,690), mark=(260,620)
+        (900, 60, 90, "Heavy/Large"),     # base=(310,710), mark=(260,620)
+    ]
+
+    for wght, opsz, exp_y_off, description in test_cases_two_axis:
+        result = test_shaper.shape('c\u0301', location={'wght': wght, 'opsz': opsz})
+        mark_y_offset = result.positions[1][1]
+
+        assert compare_values(mark_y_offset, exp_y_off, tolerance=2), \
+            f"c+acute {description} wght={wght}, opsz={opsz}: expected y offset {exp_y_off}, got {mark_y_offset}"
 
 
 # ---------------------------------
