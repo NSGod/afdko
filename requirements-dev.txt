@@ -9,3 +9,4 @@ pytest-cov>=2.6.1
 pytest-xdist>=2.5.0
 scikit-build-core>=0.10.0
 setuptools_scm>=7.0.0
+uharfbuzz>=0.30.0
