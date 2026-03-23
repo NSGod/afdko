@@ -48,7 +48,8 @@
 			<point x="248" y="-13"/>
 			<point x="295" y="20"/>
 			<point x="356" y="88" type="curve"/>
-			<point x="361" y="23"/>
+			<point x="356" y="84" type="line"/>
+			<point x="362" y="21"/>
 			<point x="380" y="-13"/>
 		</contour>
 		<contour>
@@ -119,7 +120,7 @@
 					</dict>
 				</array>
 				<key>id</key>
-				<string>24f5c9f7d58cdd34f0162f35e3f8b5d3507b9c14032e0026b527c432b00d4d2a11e8064eecc83a37e4d12c5dd529ea4eb496a99a77fe975c77f7c9766de6c2e5</string>
+				<string>1daa1a6674a41527301964645fefde974c5786983eababbef887566a10bceabe55c22d8000ae1a53e92dd76b4f9d7c71bbc925fd14e9255ae303748e837a3801</string>
 			</dict>
 		</dict>
 	</lib>

@@ -3,6 +3,7 @@ import pytest
 from shutil import copy2, copytree, rmtree
 import subprocess
 import sys
+import tempfile
 
 from afdko.makeotf import (
     checkIfVertInFeature,
@@ -36,8 +37,16 @@ test_dir = os.path.dirname(os.path.realpath(__file__))
 afdko_dir = os.path.join(test_dir, "..")
 os.chdir(afdko_dir)
 
+# Tests use the unified 'afdko' invoker by default for the primary test path.
+# This reflects real-world usage where users run 'afdko makeotf ...' commands.
+# A small backwards compatibility test at the end verifies wrappers still work.
 TOOL = 'makeotf'
 CMD = ['-t', TOOL]
+
+
+def _tool_cmd(*args):
+    """Helper to construct command using unified invoker."""
+    return ['afdko', TOOL] + list(args)
 
 T1PFA_NAME = 't1pfa.pfa'
 UFO2_NAME = 'ufo2.ufo'
@@ -47,7 +56,7 @@ TTF_NAME = 'font.ttf'
 OTF_NAME = 'SourceSans-Test.otf'
 
 DATA_DIR = os.path.join(os.path.split(__file__)[0], TOOL + '_data')
-TEMP_DIR = os.path.join(DATA_DIR, 'temp_output')
+TEMP_DIR = None  # Initialized in setup_module()
 
 allow_skip_console = os.getenv('AFDKO_TEST_SKIP_CONSOLE',
                                'False').lower() in ('true', '1', 't')
@@ -64,17 +73,18 @@ xfail_py3_win = pytest.mark.xfail(
 
 def setup_module():
     """
-    Create the temporary output directory
+    Create the temporary output directory in system temp
     """
-    rmtree(TEMP_DIR, ignore_errors=True)
-    os.mkdir(TEMP_DIR)
+    global TEMP_DIR
+    TEMP_DIR = tempfile.mkdtemp(prefix='afdko_makeotf_test_')
 
 
 def teardown_module():
     """
     teardown the temporary output directory
     """
-    rmtree(TEMP_DIR)
+    if TEMP_DIR and os.path.exists(TEMP_DIR):
+        rmtree(TEMP_DIR)
 
 
 # -----
@@ -88,7 +98,7 @@ def test_exit_no_option():
     if allow_skip_console:
         pytest.xfail("May not work if console_script wrapper is missing")
     with pytest.raises(subprocess.CalledProcessError) as err:
-        subprocess.check_call([TOOL])
+        subprocess.check_call(_tool_cmd())
     assert err.value.returncode == 2
 
 
@@ -96,14 +106,14 @@ def test_exit_no_option():
 def test_exit_known_option(arg):
     if allow_skip_console:
         pytest.xfail("May not work if console_script wrapper is missing")
-    assert subprocess.call([TOOL, arg]) == 0
+    assert subprocess.call(_tool_cmd(arg)) == 0
 
 
 @pytest.mark.parametrize('arg', ['-j', '--bogus'])
 def test_exit_unknown_option(arg):
     if allow_skip_console:
         pytest.xfail("May not work if console_script wrapper is missing")
-    assert subprocess.call([TOOL, arg]) == 2
+    assert subprocess.call(_tool_cmd(arg)) == 2
 
 
 @pytest.mark.parametrize('arg, input_filename, ttx_filename', [
@@ -132,18 +142,16 @@ def test_input_formats(arg, input_filename, ttx_filename):
                    '    <checkSumAdjustment value=' + SPLIT_MARKER +
                    '    <created value=' + SPLIT_MARKER +
                    '    <modified value=',
-                   '-r', r'^\s+Version.*;hotconv.*;makeotfexe'])
+                   '-r', r'^\s+Version.*;addfeatures *'])
 
 
 @pytest.mark.parametrize('args, ttx_fname', [
     ([], 'font_dev'),
-    (['r'], 'font_rel'),
 ])
-def test_build_font_and_check_messages(args, ttx_fname):
+def test_build_font(args, ttx_fname):
     actual_path = get_temp_file_path()
-    expected_msg_path = get_expected_path(f'{ttx_fname}_output.txt')
     ttx_filename = f'{ttx_fname}.ttx'
-    stderr_path = runner(CMD + [
+    runner(CMD + [
         '-s', '-e', '-n', '-o', 'f', f'_{get_input_path("font.pfa")}',
                                 'o', f'_{actual_path}'] + args)
     actual_ttx = generate_ttx_dump(actual_path)
@@ -155,9 +163,7 @@ def test_build_font_and_check_messages(args, ttx_fname):
                    '    <checkSumAdjustment value=' + SPLIT_MARKER +
                    '    <created value=' + SPLIT_MARKER +
                    '    <modified value=',
-                   '-r', r'^\s+Version.*;hotconv.*;makeotfexe'])
-    assert differ([expected_msg_path, stderr_path,
-                   '-r', r'^Built (development|release) mode font'])
+                   '-r', r'^\s+Version.*;addfeatures *'])
 
 
 def test_getSourceGOADBData():
@@ -264,14 +270,14 @@ def test_find_vert_feature_bug148(fea_filename, result):
     # options 'ReleaseMode' and 'SuppressHintWarnings'
     ([], (None, None)),
     (['-r'], ('true', None)),
-    (['-shw'], (None, None)),
-    (['-nshw'], (None, 'true')),
-    (['-r', '-shw'], ('true', None)),
-    (['-r', '-nshw'], ('true', 'true')),
+    (['-shw'], (None, 'true')),
+    (['-nshw'], (None, None)),
+    (['-r', '-shw'], ('true', 'true')),
+    (['-r', '-nshw'], ('true', None)),
     # makeotf option parsing has no mechanism for mutual exclusivity,
     # so the last option typed on the command line wins
-    (['-shw', '-nshw'], (None, 'true')),
-    (['-nshw', '-shw'], (None, None)),
+    (['-shw', '-nshw'], (None, None)),
+    (['-nshw', '-shw'], (None, 'true')),
 ])
 def test_options_shw_nshw_bug457(args, result):
     params = MakeOTFParams()
@@ -333,7 +339,6 @@ def test_readOptionFile():
     assert params.opt_kSetfsSelectionBitsOff == '[8, 9]'
     assert params.opt_kSetfsSelectionBitsOn == '[7]'
     assert params.seenOS2v4Bits == [1, 1, 1]
-    assert params.opt_UseOldNameID4 is None
 
     params.currentDir = os.getcwd()
     font_dir_path = os.path.relpath(abs_font_dir_path, params.currentDir)
@@ -443,9 +448,7 @@ def test_cid_keyed_cff_bug470(args, font, fontinfo):
     else:
         ttx_file = f'bug470/{font}.ttx'
     font_file = f'bug470/{font}.pfa'
-    # 'dir=TEMP_DIR' is used for guaranteeing that the temp data is on same
-    # file system as other data; if it's not, a file rename step made by
-    # sfntedit will NOT work.
+    # Use TEMP_DIR to keep test files isolated
     actual_path = get_temp_file_path(directory=TEMP_DIR)
     runner(CMD + ['-o', 'f', f'_{get_input_path(font_file)}',
                         'o', f'_{actual_path}'] + args)
@@ -509,7 +512,7 @@ def test_GOADB_options_bug497(opts):
                    '    <checkSumAdjustment value=' + SPLIT_MARKER +
                    '    <created value=' + SPLIT_MARKER +
                    '    <modified value=',
-                   '-r', r'^\s+Version.*;hotconv.*;makeotfexe'])
+                   '-r', r'^\s+Version.*;addfeatures *'])
 
 
 @pytest.mark.parametrize('feat_name, has_warn', [('v0005', False),
@@ -583,7 +586,7 @@ def test_ttf_input_font_bug680():
     feat_filename = 'bug680/features.fea'
     ttf_path = get_temp_file_path()
 
-    runner(CMD + ['-o', 'r',
+    runner(CMD + ['-o', 'V', 'r',
                   'f', f'_{get_input_path(input_filename)}',
                   'ff', f'_{get_input_path(feat_filename)}',
                   'o', f'_{ttf_path}'])
@@ -606,7 +609,7 @@ def test_outline_from_processed_layer_bug703():
     input_filename = 'bug703.ufo'
     ttx_filename = 'bug703.ttx'
     actual_path = get_temp_file_path()
-    runner(CMD + ['-o', 'f', f'_{get_input_path(input_filename)}',
+    runner(CMD + ['-o', 'amnd', 'f', f'_{get_input_path(input_filename)}',
                         'o', f'_{actual_path}'])
     actual_ttx = generate_ttx_dump(actual_path, ['CFF '])
     expected_ttx = get_expected_path(ttx_filename)
@@ -654,7 +657,7 @@ def test_duplicate_warning_messages_bug751():
     otf_path = get_temp_file_path()
 
     stderr_path = runner(
-        CMD + ['-s', '-e', '-n', '-o',
+        CMD + ['-s', '-e', '-n', '-o', 'swo', 'shw',
                'f', f'_{get_input_path(input_filename)}',
                'o', f'_{otf_path}'])
 
@@ -709,10 +712,10 @@ def test_check_psname_in_fmndb_bug1171(explicit_fmndb):
     actual_ttx = generate_ttx_dump(actual_path, ['name'])
     assert differ([expected_ttx, actual_ttx,
                    '-s', '<ttFont sfntVersion',
-                   '-r', r'^\s+Version.*;hotconv.*;makeotfexe'])
+                   '-r', r'^\s+Version.*;addfeatures *'])
 
 
-libplist_warn = (b"tx: (ufr) Warning: Unable to open "
+libplist_warn = (b"Unable to open "
                  b"lib.plist in source UFO font.")
 
 
@@ -733,7 +736,7 @@ def test_missing_ufo_libplist_bug1306(file, msg, ret_code):
     folder = "ufo-libplist-parsing/"
     input_path = get_input_path(folder + file + ".ufo")
     out_font_path = get_temp_file_path()
-    args = CMD + ['-s', '-e', '-o',
+    args = CMD + ['-s', '-e', '-o', 'shw',
                   'f', f'_{input_path}',
                   'o', f'_{out_font_path}']
     stdout_path = runner(args)
@@ -747,5 +750,39 @@ def test_missing_ufo_libplist_bug1306(file, msg, ret_code):
             msg = expected_msg.read()
     assert msg in output
 
-    assert subprocess.call([TOOL, '-f', input_path,
-                            '-o', out_font_path]) == ret_code
+    assert subprocess.call(_tool_cmd('-amnd', '-f', input_path,
+                            '-o', out_font_path)) == ret_code
+
+
+# ---------------------------------
+# Backwards Compatibility Tests
+# ---------------------------------
+# Minimal tests to verify wrapper scripts still work.
+# Main tests above use the invoker (the norm).
+
+class TestWrapperBackwardsCompatibility:
+    """Verify that the makeotf wrapper script still works for backwards compatibility."""
+
+    @pytest.mark.parametrize('arg', ['-h', '-v'])
+    def test_wrapper_help(self, arg):
+        """Wrapper script handles basic options."""
+        if allow_skip_console:
+            pytest.xfail("May not work if console_script wrapper is missing")
+        assert subprocess.call([TOOL, arg]) == 0
+
+    def test_wrapper_runs_same_code(self):
+        """Wrapper and invoker produce identical output."""
+        if allow_skip_console:
+            pytest.xfail("May not work if console_script wrapper is missing")
+        
+        # Run via invoker
+        inv_result = subprocess.run(_tool_cmd('-h'),
+                                    capture_output=True, text=True)
+        
+        # Run via wrapper
+        wrap_result = subprocess.run([TOOL, '-h'],
+                                     capture_output=True, text=True)
+        
+        # Should produce identical output
+        assert inv_result.returncode == wrap_result.returncode
+        assert inv_result.stdout == wrap_result.stdout

@@ -2,16 +2,15 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef SFNTREAD_H
-#define SFNTREAD_H
+#ifndef SHARED_INCLUDE_SFNTREAD_H_
+#define SHARED_INCLUDE_SFNTREAD_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define SFR_VERSION CTL_MAKE_VERSION(1, 0, 7)
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* sfnt Format Table Handler
    =========================
@@ -33,7 +32,7 @@ extern "C" {
 
 typedef struct sfrCtx_ *sfrCtx;
 sfrCtx sfrNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define SFR_CHECK_ARGS CTL_CHECK_ARGS_CALL(SFR_VERSION)
 
@@ -97,8 +96,7 @@ long sfrGetNextTTCOffset(sfrCtx h);
    "origin" parameter passed to sfrBegFont() so that it always specifies the
    absolute source data stream offset of the member sfnt. */
 
-typedef struct
-{
+typedef struct {
     ctlTag tag;
     unsigned long checksum;
     unsigned long offset;
@@ -155,7 +153,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from sfrerr.h. */
 
-char *sfrErrStr(int err_code);
+const char *sfrErrStr(int err_code);
 
 /* sfrErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -165,8 +163,4 @@ void sfrGetVersion(ctlVersionCallbacks *cb);
 /* sfrGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SFNTREAD_H */
+#endif  // SHARED_INCLUDE_SFNTREAD_H_

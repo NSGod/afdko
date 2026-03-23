@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef T1WRITE_H
-#define T1WRITE_H
+#ifndef SHARED_INCLUDE_T1WRITE_H_
+#define SHARED_INCLUDE_T1WRITE_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define T1W_VERSION CTL_MAKE_VERSION(1, 0, 35)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Type 1 Font Format Generation Library
    =====================================
@@ -47,7 +46,7 @@ extern "C" {
 
 typedef struct t1wCtx_ *t1wCtx;
 t1wCtx t1wNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define T1W_CHECK_ARGS CTL_CHECK_ARGS_CALL(T1W_VERSION)
 
@@ -252,7 +251,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from t1werr.h. */
 
-char *t1wErrStr(int err_code);
+const char *t1wErrStr(int err_code);
 
 /* t1wErrStr() maps the "errcode" parameter to a null-terminated error
    string. */
@@ -265,8 +264,4 @@ void t1wGetVersion(ctlVersionCallbacks *cb);
 void t1wUpdateGlyphNames(t1wCtx h, char *glyphNames);
 /* Used to update the array of glyph name pointers, when the source data array has changed location because it needed to grow. */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* T1WRITE_H */
+#endif  // SHARED_INCLUDE_T1WRITE_H_

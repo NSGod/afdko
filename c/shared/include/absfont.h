@@ -2,8 +2,11 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef ABSFONT_H
-#define ABSFONT_H
+#ifndef SHARED_INCLUDE_ABSFONT_H_
+#define SHARED_INCLUDE_ABSFONT_H_
+
+#include <stdint.h>
+#include <stdio.h>
 
 #include "ctlshare.h"
 #include "dynarr.h"
@@ -12,10 +15,7 @@
 
 #define ABF_VERSION CTL_MAKE_VERSION(1, 0, 54)
 
-#include <stdint.h>
-#include <stdio.h>
-
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(STRIP_EXTERN_C)
 extern "C" {
 #endif
 
@@ -36,16 +36,14 @@ extern "C" {
    from explicitly set values. */
 
 typedef struct abfFontDict_ abfFontDict;
-typedef struct /* FontMatrix */
-{
+typedef struct {  // FontMatrix
     long cnt; /* ABF_EMPTY_ARRAY */
     float array[6];
 } abfFontMatrix;
 
-typedef struct /* String */
-{
-    char *ptr; /* ABF_UNSET_PTR */
-    long impl; /* ABF_UNSET_INT */
+typedef struct {  // String
+    const char *ptr; /* ABF_UNSET_PTR */
+    long impl;       /* ABF_UNSET_INT */
 } abfString;
 
 /* Textual data is represented by the abfString type which contains a
@@ -57,8 +55,7 @@ typedef struct /* String */
    impl field as they see fit since it will always be reinitialized by a
    library that makes use of it. */
 
-enum /* srcFontType values */
-{
+enum {  // srcFontType values
     abfSrcFontTypeType1Name,
     abfSrcFontTypeType1CID,
     abfSrcFontTypeCFFName,
@@ -69,14 +66,13 @@ enum /* srcFontType values */
     abfSrcFontTypeUFOCID,
 };
 
-typedef struct
-{
+typedef struct {
     long flags;                /* 0 */
-#define ABF_CID_FONT  (1 << 0) /* CID-keyed font */
+#define ABF_ROS_FONT  (1 << 0) /* Font contains ROS */
 #define ABF_SYN_FONT  (1 << 1) /* Synthetic font */
 #define ABF_SING_FONT (1 << 2) /* SING glyphlet font */
     long srcFontType;          /* ABF_UNSET_INT */
-    char *filename;            /* ABF_UNSET_PTR */
+    const char *filename;            /* ABF_UNSET_PTR */
     long UnitsPerEm;           /* 1000 */
     long nGlyphs;              /* ABF_UNSET_INT */
 } abfSupplement;
@@ -90,15 +86,14 @@ typedef struct
    clients shouldn't rely on these values but are free to use these fields as
    they see fit.
 
-   CID-keyed fonts are indicated by setting the ABF_CID_FONT flag bit to 1
-   and specifying CID-specific data via the abfTopDict.cid fields.
+   CID-keyed fonts are indicated by setting the ABF_ROS_FONT flag bit to 1
+   and specifying the data via the abfTopDict.cid fields.
 
    Synthetic fonts are indicated by setting the ABF_SYN_FONT flag bit to 1
    and the SynBaseFontName field records the FontName of the font that the
    synthetic variant is based on. */
 
-enum /* OrigFontType field values */
-{
+enum {  // OrigFontType field values
     abfOrigFontTypeType1,
     abfOrigFontTypeCID,
     abfOrigFontTypeTrueType,
@@ -107,12 +102,10 @@ enum /* OrigFontType field values */
 };
 
 /* item variation store  */
-struct var_itemVariationStore_;
-typedef struct var_itemVariationStore_ *var_itemVariationStore;
+struct itemVariationStore;
 
 /* Top dictionary data. Comments indicate default/initial values. */
-typedef struct
-{
+typedef struct {
     abfString version;        /* Unset */
     abfString Notice;         /* Unset */
     abfString Copyright;      /* Unset */
@@ -126,15 +119,13 @@ typedef struct
     long UniqueID;            /* ABF_UNSET_INT */
     float FontBBox[4];        /* 0. 0. 0. 0. */
     float StrokeWidth;        /* 0. */
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         long array[16];
     } XUID;
     abfString PostScript;   /* Unset (CFF PostScript op value) */
     abfString BaseFontName; /* Unset (Acrobat) */
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         long array[15];
     } BaseFontBlend;
@@ -142,8 +133,7 @@ typedef struct
     long OrigFontType;         /* ABF_UNSET_INT */
     long WasEmbedded;          /* 0=false */
     abfString SynBaseFontName; /* Unset */
-    struct                     /* CID-specific extensions */
-    {
+    struct {                   /* CID-specific extensions */
         abfFontMatrix FontMatrix; /* 1. 0. 0. 1. 0. 0. */
         abfString CIDFontName;    /* Unset */
         abfString Registry;       /* Unset */
@@ -154,62 +144,53 @@ typedef struct
         long CIDCount;            /* 8720 */
         long UIDBase;             /* ABF_UNSET_INT */
     } cid;
-    struct /* Font dict array */
-    {
+    struct {  // Font dict array
         long cnt;           /* Value set by client to match array */
         abfFontDict *array; /* Array allocated by client to match cnt */
     } FDArray;
     abfSupplement sup;       /* Supplementary data */
     unsigned short maxstack; /* Supplementary data */
-    var_itemVariationStore varStore;
+    itemVariationStore *varStore;
 } abfTopDict;
 
 /* Private dictionary data. Comments indicate default/initial values. */
 
-typedef struct
-{
+typedef struct {
     /* Used to hold stack items from a font with blended values */
     float value;
     int numBlends;
     float *blendValues;
 } abfOpEntry;
 
-typedef struct
-{
+typedef struct {
     /* Used to hold stack items from a font with blended values */
     float value;
     int hasBlend;
     float blendValues[CFF2_MAX_OP_STACK];
 } abfBlendArg;
 
-typedef struct
-{
+typedef struct {
     long cnt; /* ABF_EMPTY_ARRAY */
     abfOpEntry array[CFF2_MAX_OP_STACK];
 } abfOpEntryArray;
 
-typedef struct
-{
+typedef struct {
     /* Note that even for a font with blended values,
      the non-blended values are always set, using the values from the default font.
      */
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } BlueValues;
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } OtherBlues;
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } FamilyBlues;
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } FamilyOtherBlues;
@@ -218,13 +199,11 @@ typedef struct
     float BlueFuzz;  /* 1 */
     float StdHW;     /* ABF_UNSET_REAL */
     float StdVW;     /* ABF_UNSET_REAL */
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } StemSnapH;
-    struct
-    {
+    struct {
         long cnt; /* ABF_EMPTY_ARRAY */
         float array[96];
     } StemSnapV;
@@ -234,8 +213,7 @@ typedef struct
     float initialRandomSeed; /* 0. */
     unsigned short vsindex;
     int numRegions;
-    struct
-    {
+    struct {
         abfOpEntryArray BlueValues;
         abfOpEntryArray OtherBlues;
         abfOpEntryArray FamilyBlues;
@@ -265,6 +243,18 @@ struct abfFontDict_ {
    PostScript name-keyed        C-struct name-keyed
    ---------------------        -------------------
    font dict                    abfTopDict fields (excluding cid fields)
+
+   PostScript CID-keyed         C-struct CID-keyed
+   --------------------         ------------------
+   CIDFont dict                 abfTopDict fields (including cid fields)
+
+   CID fonts always have FDArray and FDSelect structures, but as of
+   CFF2 non-CID fonts have these as well. When there is a single 
+   private dictionary it is represnted as FDArray[0] with no FDSelect.
+   Otherwise there is an FDSelect and multiple FDArray entries:
+
+   PostScript name-keyed        C-struct name-keyed
+   ---------------------        -------------------
                                 FDArray[0].FontName
                                 FDArray[0].PaintType
                                 FDArray[0].FontMatrix
@@ -272,7 +262,6 @@ struct abfFontDict_ {
 
    PostScript CID-keyed         C-struct CID-keyed
    --------------------         ------------------
-   CIDFont dict                 abfTopDict fields (including cid fields)
        FDArray[0]                   FDArray[0]
            font dict
                Private dict
@@ -284,9 +273,7 @@ struct abfFontDict_ {
            font dict
                Private dict
 
-   It can be seen that there is a direct mapping for CID-keyed fonts but the
-   name-keyed fonts are represented using a single element FDArray whose font
-   dict fields are treated as an extension of the font dict. */
+   */
 
 void abfInitAllDicts(abfTopDict *top);
 void abfInitTopDict(abfTopDict *top);
@@ -295,8 +282,8 @@ void abfInitFontDict(abfFontDict *font);
 /* The client is responsible for allocating the font dictionary data structures
    in memory and correctly initializing the abfTopDict.FDArray.cnt fields to
    specify the number of element allocated in the abfTopDict.FDArray.array.
-   This will be 1 for name-keyed fonts and >=1 (the number being dependent on
-   the complexity of the font) for CID-keyed fonts. Once this has been done
+   This will be 1 for fonts without FDSelect and >=1 (the number being dependent
+   on the complexity of the font) for fonts with FDSelect. Once this has been done
    abfInitAllDicts() may be called to initialize the entire data structure to
    the values shown in the comments. Alternatively, the abfInitTopDict() and
    abfInitFontDict() may be called to selectively initialize the top dictionary
@@ -310,7 +297,7 @@ void abfInitFontDict(abfFontDict *font);
    top->FDArray.array = malloc(top->FDArray.cnt * sizeof(abfFontDict));
    abfInitAllDicts(top);
 
-   CID fonts may be similarly handled except that the font dictionary array
+   FDSelect fonts may be similarly handled except that the font dictionary array
    will typically have more than one element. */
 
 typedef struct abfErrCallbacks_ abfErrCallbacks;
@@ -343,7 +330,7 @@ int abfIsDefaultFontMatrix(const abfFontMatrix *FontMatrix);
 
 /* --------------------------- Font Merge Support -------------------------- */
 
-int abfCompareTopDicts(abfTopDict *top1, abfTopDict *top2);
+int abfCompareTopDicts(const abfTopDict *top1, const abfTopDict *top2);
 
 /* abfCompareTopDicts() will compare two top dicts to see if they are similar
    enough to merge. It returns 0 if they can be merged else 1.
@@ -355,7 +342,7 @@ int abfCompareTopDicts(abfTopDict *top1, abfTopDict *top2);
 
    For CID-keyed fonts, registry and order are checked, but not supplement. */
 
-int abfCompareFontDicts(abfFontDict *font1, abfFontDict *font2);
+int abfCompareFontDicts(const abfFontDict *font1, const abfFontDict *font2);
 
 /* abfCompareFontDicts() will compare two font dicts to see if they are
    similar enough to merge. It returns 0 if they can be merged else 1.
@@ -364,8 +351,7 @@ int abfCompareFontDicts(abfFontDict *font1, abfFontDict *font2);
    BlueValues.
 
    abfCompareFontDicts() is used in the destination font writing module to
-   compare FDArrays of fonts with more than one element in the FDArray,
-   CID fonts. */
+   compare FDArrays of fonts with more than one element in the FDArray. */
 
 /* ---------------------------- Glyph Callbacks ---------------------------- */
 
@@ -373,15 +359,13 @@ int abfCompareFontDicts(abfFontDict *font1, abfFontDict *font2);
    used whenever glyph information is passed from one component to the next. */
 
 typedef struct abfEncoding_ abfEncoding;
-struct abfEncoding_ /* Encoding node */
-{
+struct abfEncoding_ {  // Encoding node
     abfEncoding *next;
     unsigned long code;
 #define ABF_GLYPH_UNENC 0xffffffffUL /* Unencoded glyph */
 };
 
-typedef struct /* Glyph information */
-{
+typedef struct {  // Glyph information
     short flags;                      /* Attribute flags */
 #define ABF_GLYPH_CID        (1 << 0) /* Glyph from CID-keyed font */
 #define ABF_GLYPH_SEEN       (1 << 1) /* Path data already returned to client */
@@ -391,7 +375,7 @@ typedef struct /* Glyph information */
     abfString gname;                  /* Name-keyed: glyph name */
     abfEncoding encoding;             /* Name-keyed: encoding list */
     unsigned short cid;               /* CID-keyed: CID */
-    uint16_t iFD;                     /* CID-keyed: FD index */
+    uint16_t iFD;                     /* FD index */
     ctlRegion sup;                    /* Supplementary data */
     struct {
         unsigned short vsindex;
@@ -420,7 +404,7 @@ typedef struct /* Glyph information */
    is updated or subset.
 
    If the font is CID-keyed the ABF_GLYPH_CID bit in the "flags" field is set
-   and the "cid" and "iFD" fields specify the CID and FD index, respectively.
+   and the "cid" field specifies the CID index.
 
    If the font is name-keyed the ABF_GLYPH_CID bit is clear and the "gname" and
    "encoding" fields specify the glyph name and encoding, respectively. The
@@ -584,8 +568,7 @@ enum {
    translation that should be applied to the accent glyph relative to the base
    glyph. */
 
-enum /* Callback return values */
-{
+enum {  // Callback return values
     ABF_CONT_RET,
     ABF_WIDTH_RET,
     ABF_SKIP_RET,
@@ -647,8 +630,7 @@ typedef int (*abfGlyphBegCallback)(abfGlyphCallbacks *cb, abfGlyphInfo *info);
 
 #include "abfdesc.h"
 
-typedef struct
-{
+typedef struct {
     long CharstringType;
     long lenSubrArray;
     float defaultWidthX;
@@ -719,16 +701,14 @@ struct abfMetricsCtx_ {
 #define ABF_MTX_TRANSFORM (1 << 0) /* Apply matrix to path */
     float matrix[6];               /* Transformation matrix */
     int err_code;                  /* Result code */
-    struct                         /* Real glyph metrics */
-    {
+    struct {                       /* Real glyph metrics */
         float left;
         float bottom;
         float right;
         float top;
         float hAdv;
     } real_mtx;
-    struct /* Integer glyph metrics */
-    {
+    struct {  // Integer glyph metrics
         long left;
         long bottom;
         long right;
@@ -840,23 +820,19 @@ struct abfDrawCtx_ {
     FILE *fp;                     /* Output stream */
     int level;                    /* Draw level */
     int showglyph;                /* Show the current glyph */
-    struct                        /* Metric data */
-    {
+    struct {                      /* Metric data */
         struct abfMetricsCtx_ ctx;
         abfGlyphCallbacks cb;
     } metrics;
-    struct /* Tile mode data */
-    {
+    struct {  // Tile mode data
         int h; /* h origin */
         int v; /* v origin */
     } tile;
-    struct /* Glyph data */
-    {
+    struct {  // Glyph data
         float hAdv;
         float scale; /* Glyph drawing scale factor (points/unit) */
     } glyph;
-    struct /* Path data */
-    {
+    struct {  // Path data
         float bx; /* Last point */
         float by;
         float cx; /* Last but one point */
@@ -906,13 +882,11 @@ struct abfAFMCtx_ {
     FILE *fp; /* Output stream */
     FILE *tmp_fp; /* temporary output stream */
     int err_code;
-    struct /* glyph metrics */
-    {
+    struct {  // glyph metrics
         struct abfMetricsCtx_ ctx;
         abfGlyphCallbacks cb;
     } glyph_metrics;
-    struct /* aggregate font bounding box metrics */
-    {
+    struct {  // aggregate font bounding box metrics
         int16_t left;
         int16_t bottom;
         int16_t right;
@@ -951,8 +925,7 @@ int abfBegFont(abfCtx h, abfTopDict *top);
 
 int abfEndFont(abfCtx h, long flags, abfGlyphCallbacks *glyph_cb);
 
-enum /* abfEndFont(flags) bits */
-{
+enum {  // abfEndFont(flags) bits
     ABF_PATH_REMOVE_OVERLAP = 1 << 0 /* Remove overlapping paths */
 };
 
@@ -985,7 +958,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from abferr.h. */
 
-char *abfErrStr(int err_code);
+const char *abfErrStr(int err_code);
 
 /* abfErrStr() maps the "errcode" parameter to a null-terminated error
    string. */
@@ -995,8 +968,8 @@ void abfGetVersion(ctlVersionCallbacks *cb);
 /* abfGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(STRIP_EXTERN_C)
 }
 #endif
 
-#endif /* ABSFONT_H */
+#endif  // SHARED_INCLUDE_ABSFONT_H_

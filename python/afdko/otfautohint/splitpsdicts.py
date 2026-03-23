@@ -23,13 +23,13 @@ class ShellCommandError(Exception):
     pass
 
 
-def replaceCFF(otfPath, tempFilePath):
+def replaceCFF(otfPath: str, tempFilePath: str) -> None:
     if not run_shell_command(['sfntedit', '-a',
                               f'CFF ={tempFilePath}', otfPath]):
         raise ShellCommandError
 
 
-def get_options(args):
+def get_options(args: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -61,17 +61,25 @@ def get_options(args):
     return options
 
 
-class dictspec():
+class Dictspec():
+    name: str
+    re: list[re.Pattern]
+    BluePairs: list[int]
+    OtherPairs: list[int]
+    SIV: list[int]
+    SIH: list[int]
+    foundGlyph: bool
+
     pass
 
 
-def getDictmap(options):
+def getDictmap(options: argparse.Namespace) -> list[Dictspec]:
     with open(options.metaPath, "rb") as dictmapfile:
         rawdictmap = plistlib.load(dictmapfile)
 
     dictmap = []
     for name, d in rawdictmap.items():
-        dct = dictspec()
+        dct = Dictspec()
         dct.name = name
         dct.BluePairs = d.get("blue_pairs", [])
         dct.OtherPairs = d.get("other_blue_pairs", [])
@@ -86,7 +94,7 @@ def getDictmap(options):
     return dictmap
 
 
-def remapDicts(fpath, dictmap):
+def remapDicts(fpath: str, dictmap: list[Dictspec]) -> None:
     f = TTFont(fpath)
     if 'CFF ' not in f:
         logger.error("No CFF table in %s: will not modify" % fpath)
@@ -103,7 +111,7 @@ def remapDicts(fpath, dictmap):
 
     # Create a new FDSelect object for the font and map the glyphs to
     # dictionary indexes according to the regular expressions in
-    # dictspec.re
+    # Dictspec.re
     fdselect = top.FDSelect = FDSelect()
     for gn in cff.getGlyphOrder():
         done = False
@@ -125,7 +133,7 @@ def remapDicts(fpath, dictmap):
     # wind up with empty dictionaries later.
     j = 0
     indexMap = []
-    newdictmap = []
+    newdictmap: list[Dictspec] = []
     for dictspec in dictmap:
         if dictspec.foundGlyph:
             newdictmap.append(dictspec)
@@ -230,7 +238,7 @@ def remapDicts(fpath, dictmap):
     replaceCFF(fpath, cfftpath)
 
 
-def main(args=None):
+def main(args: list[str] | None = None) -> int:
     options = get_options(args)
 
     dictmap = getDictmap(options)

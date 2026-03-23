@@ -7,4 +7,5 @@ glyph[1] {foo,-,
   197 282 move
   419 282 line
   197 481 line
+  197 282 line
   endchar}

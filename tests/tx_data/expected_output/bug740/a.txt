@@ -4,6 +4,7 @@ glyph[0] {AE,U+00C6,
   299 320 move
   493 605 line
   493 320 line
+  299 320 line
   925 684 move
   876 675 line
   402 675 line
@@ -38,4 +39,5 @@ glyph[0] {AE,U+00C6,
   829 633 line
   923 446 line
   962 446 line
+  925 684 line
   endchar}

@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef TTREAD_H
-#define TTREAD_H
+#ifndef SHARED_INCLUDE_TTREAD_H_
+#define SHARED_INCLUDE_TTREAD_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define TTR_VERSION CTL_MAKE_VERSION(1, 0, 22)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* TrueType Font Parsing Library
    =============================
@@ -32,7 +31,7 @@ extern "C" {
 
 typedef struct ttrCtx_ *ttrCtx;
 ttrCtx ttrNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define TTR_CHECK_ARGS CTL_CHECK_ARGS_CALL(TTR_VERSION)
 
@@ -97,7 +96,7 @@ int ttrIterateGlyphs(ttrCtx h, abfGlyphCallbacks *glyph_cb);
 int ttrGetGlyphByTag(ttrCtx h,
                      unsigned short tag, abfGlyphCallbacks *glyph_cb);
 int ttrGetGlyphByName(ttrCtx h,
-                      char *gname, abfGlyphCallbacks *glyph_cb);
+                      const char *gname, abfGlyphCallbacks *glyph_cb);
 
 /* ttrGetGlyphByTag() and ttrGetGlyphByName() are called obtain glyph data from
    a glyph selected by its tag value (glyph index) or its name, respectively.
@@ -136,7 +135,7 @@ enum {
    error code that is defined in the above enumeration that is built from
    ttrerr.h. */
 
-char *ttrErrStr(int err_code);
+const char *ttrErrStr(int err_code);
 
 /* ttrErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -146,8 +145,4 @@ void ttrGetVersion(ctlVersionCallbacks *cb);
 /* ttrGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* TTREAD_H */
+#endif  // SHARED_INCLUDE_TTREAD_H_

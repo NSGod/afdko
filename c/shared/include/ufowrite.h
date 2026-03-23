@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef UFOWRITE_H
-#define UFOWRITE_H
+#ifndef SHARED_INCLUDE_UFOWRITE_H_
+#define SHARED_INCLUDE_UFOWRITE_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define UFW_VERSION CTL_MAKE_VERSION(1, 1, 0)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* UFO Font Format Generation Library
    =====================================
@@ -46,7 +45,7 @@ extern "C" {
 
 typedef struct ufwCtx_ *ufwCtx;
 ufwCtx ufwNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define UFW_CHECK_ARGS CTL_CHECK_ARGS_CALL(UFW_VERSION)
 
@@ -59,14 +58,13 @@ ufwCtx ufwNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
    The UFW_CHECK_ARGS macro is passed as the last parameter to ufwNew() in
    order to perform a client/library compatibility check. */
 
-int ufwBegFont(ufwCtx h, long flags, char *glyphLayerDir);
+int ufwBegFont(ufwCtx h, long flags, const char *glyphLayerDir);
 
 /* ufwBegFont() is called to begin a font definition. The "flags" parameter
    provides control over certain attributes of the generated font with the
    options enumerated below. Returns ufwSuccess on success. */
 
-enum /* enum too provide values for flags field. */
-{
+enum {  // enum too provide values for flags field.
     UFW_GLYPHNAMES_NONE = 0, /* Include no glyph names (the default) */
 };
 
@@ -104,7 +102,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from ufwerr.h. */
 
-char *ufwErrStr(int err_code);
+const char *ufwErrStr(int err_code);
 
 /* ufwErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -116,8 +114,4 @@ void ufwGetVersion(ctlVersionCallbacks *cb);
 
 #define MAX_UFO_GLYPH_NAME 256
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* UFOWRITE_H */
+#endif  // SHARED_INCLUDE_UFOWRITE_H_

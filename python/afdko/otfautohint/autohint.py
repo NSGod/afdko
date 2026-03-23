@@ -8,9 +8,9 @@
 import logging
 import os
 import time
-from collections import namedtuple
 from threading import Thread
 from multiprocessing import Pool, Manager, current_process
+from typing import Any, Iterator, NamedTuple
 
 from .otfFont import CFFFontData
 from .ufoFont import UFOFontData
@@ -18,25 +18,32 @@ from .report import Report, GlyphReport
 from .hinter import glyphHinter
 from .logging import log_receiver
 from .fdTools import FDDictManager
+from .glyphData import glyphData
 
 from . import (get_font_format, FontParseError)
+
+# Import from __main__ for type annotations
+# (avoid circular import by using TYPE_CHECKING)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .__main__ import HintOptions, ReportOptions
 
 log = logging.getLogger(__name__)
 
 
 class ACOptions(object):
-    def __init__(self):
-        self.inputPaths = []
-        self.outputPaths = []
+    def __init__(self) -> None:
+        self.inputPaths: list[str] = []
+        self.outputPaths: list[str] = []
         self.referenceFont = None
         self.referenceOutputPath = None
-        self.glyphList = []
+        self.glyphList: list[str] = []
         # True when contents of glyphList were specified directly by the user
         self.explicitGlyphs = False
-        self.nameAliases = {}
+        self.nameAliases: dict[str, str] = {}
         self.excludeGlyphList = False
-        self.overlapList = []
-        self.overlapForcing = None
+        self.overlapList: list[str] = []
+        self.overlapForcing: bool | None = None
         self.looseOverlapMapping = False
         self.hintAll = False
         self.readHints = True
@@ -76,7 +83,7 @@ class ACOptions(object):
                         'currency': False, 'registered': False}
 #        self.newHintsOnMoveto = {'percent': False, 'perthousand': False}
 
-    def __str__(self):
+    def __str__(self) -> str:
         # used only when debugging.
         import inspect
         data = []
@@ -88,11 +95,15 @@ class ACOptions(object):
         data.append("")
         return os.linesep.join(data)
 
-    def justReporting(self):
+    def justReporting(self) -> bool:
         return self.report_zones or self.report_stems
 
 
-def getGlyphNames(glyphSpec, fontGlyphList, fDesc):
+def getGlyphNames(
+    glyphSpec: str,
+    fontGlyphList: list[str],
+    fDesc: str
+) -> list[str] | None:
     # If the "range" is actually in the font, just ignore its apparent
     # range-ness
     if glyphSpec.isnumeric():
@@ -145,7 +156,11 @@ def getGlyphNames(glyphSpec, fontGlyphList, fDesc):
     return glyphNameList
 
 
-def filterGlyphList(options, fontGlyphList, fDesc):
+def filterGlyphList(
+    options: "HintOptions | ReportOptions",
+    fontGlyphList: list[str],
+    fDesc: str
+) -> list[str]:
     """
     Returns the list of glyphs which are in the intersection of the argument
     list and the glyphs in the font.
@@ -164,7 +179,11 @@ def filterGlyphList(options, fontGlyphList, fDesc):
     return glyphList
 
 
-def get_glyph(options, font, name):
+def get_glyph(
+    options: "HintOptions | ReportOptions",
+    font: UFOFontData | CFFFontData,
+    name: str
+) -> glyphData | None:
     try:
         gl = font.convertToGlyphData(name, options.readHints,  # stems
                                      options.readHints,  # flex
@@ -181,10 +200,13 @@ def get_glyph(options, font, name):
         return None
 
 
-FontInstance = namedtuple("FontInstance", "font inpath outpath")
+class FontInstance(NamedTuple):
+    font: Any
+    inpath: str
+    outpath: str | None
 
 
-def setUniqueDescs(fontInstances):
+def setUniqueDescs(fontInstances: list[FontInstance]) -> None:
     descs = [f.font.getPSName() for f in fontInstances]
     if None in descs or '' in descs or len(descs) != len(set(descs)):
         if len(fontInstances) == 1:
@@ -214,7 +236,11 @@ class fontWrapper:
     stores the result back those objects. Optionally saves the
     modified glyphs in corresponding output font files.
     """
-    def __init__(self, options, fil):
+    def __init__(
+        self,
+        options: "HintOptions | ReportOptions",
+        fil: list[FontInstance]
+    ) -> None:
         self.options = options
         self.fontInstances = fil
         setUniqueDescs(fil)
@@ -235,10 +261,10 @@ class fontWrapper:
         self.dictManager = FDDictManager(options, fil, self.glyphNameList,
                                          self.isVF)
 
-    def numGlyphs(self):
+    def numGlyphs(self) -> int:
         return len(self.glyphNameList)
 
-    def hintStatus(self, name, hintedGlyphTuple):
+    def hintStatus(self, name: str, hintedGlyphTuple: Any) -> bool:
         an = self.options.nameAliases.get(name, name)
         if hintedGlyphTuple is None:
             log.warning("%s: Could not hint!", an)
@@ -257,12 +283,12 @@ class fontWrapper:
         return True
 
     class glyphiter:
-        def __init__(self, parent):
+        def __init__(self, parent: "fontWrapper") -> None:
             self.fw = parent
             self.gnIter = parent.glyphNameList.__iter__()
             self.notFound = 0
 
-        def __next__(self):
+        def __next__(self) -> tuple[str, tuple[glyphData], tuple[int, int]]:
             # gnIter's StopIteration exception stops this iteration
             vsindex = 0
             stillLooking = True
@@ -285,10 +311,12 @@ class fontWrapper:
             self.fw.notFound = self.notFound
             return name, gt, self.fw.dictManager.getRecKey(name, vsindex)
 
-    def __iter__(self):
-        return self.glyphiter(self)
+    def __iter__(
+        self
+    ) -> Iterator[tuple[str, tuple[glyphData], tuple[int, int]]]:
+        return self.glyphiter(self)  # type: ignore
 
-    def hint(self):
+    def hint(self) -> bool:
         hintedAny = False
 
         report = Report() if self.reportOnly else None
@@ -296,8 +324,11 @@ class fontWrapper:
         pcount = self.options.process_count
         if pcount is None:
             pcount = os.cpu_count()
+        assert pcount is not None
         if pcount < 0:
-            pcount = os.cpu_count() - pcount
+            cpu_count = os.cpu_count()
+            assert cpu_count is not None
+            pcount = cpu_count - pcount
             if pcount < 0:
                 pcount = 1
         if pcount > self.numGlyphs():
@@ -311,6 +342,7 @@ class fontWrapper:
 
         pool = None
         logThread = None
+        gmap: Iterator | None = None
         try:
             dictRecord = self.dictManager.getDictRecord()
             if pcount == 1:
@@ -355,7 +387,9 @@ class fontWrapper:
                          self.numGlyphs())
 
             if report is not None:
-                report.save(self.fontInstances[0].outpath, self.options)
+                outpath = self.fontInstances[0].outpath
+                assert outpath is not None
+                report.save(outpath, self.options)
             elif not hintedAny:
                 log.info("No glyphs were hinted.")
 
@@ -363,6 +397,7 @@ class fontWrapper:
                 pool.close()
                 pool.join()
                 logQueue.put(None)
+                assert logThread is not None
                 logThread.join()
         finally:
             if pool is not None:
@@ -374,37 +409,43 @@ class fontWrapper:
 
         return hintedAny
 
-    def save(self):
+    def save(self) -> None:
         for f in self.fontInstances:
             log.info("Saving font file %s with new hints..." % f.outpath)
             f.font.save(f.outpath)
 
-    def close(self):
+    def close(self) -> None:
         for f in self.fontInstances:
             log.info("Closing font file %s without saving." % f.outpath)
             f.font.close()
 
 
-def openFont(path, options):
+def openFont(
+    path: str,
+    options: "HintOptions | ReportOptions"
+) -> UFOFontData | CFFFontData:
     font_format = get_font_format(path)
     if font_format is None:
         raise FontParseError(f"{path} is not a supported font format")
 
     if font_format == "UFO":
-        font = UFOFontData(path, options.logOnly, options.writeToDefaultLayer)
+        return UFOFontData(path, options.logOnly, options.writeToDefaultLayer)
     else:
-        font = CFFFontData(path, font_format)
-
-    return font
+        return CFFFontData(path, font_format)
 
 
-def get_outpath(options, font_path, i):
+def get_outpath(
+    options: "HintOptions | ReportOptions",
+    font_path: str,
+    i: int | str
+) -> str:
     if i == 'r':
         if options.referenceOutputPath is not None:
             outpath = options.referenceOutputPath
         else:
             outpath = font_path
     else:
+        assert isinstance(i, int)
         if options.outputPaths is not None and i < len(options.outputPaths):
             outpath = options.outputPaths[i]
         else:
@@ -412,7 +453,7 @@ def get_outpath(options, font_path, i):
     return outpath
 
 
-def hintFiles(options):
+def hintFiles(options: "HintOptions | ReportOptions") -> None:
     fontInstances = []
     # If there is a reference font, prepend it to font paths.
     # It must be the first font in the list, code below assumes that.

@@ -1,0 +1,12 @@
+# Test: Error when referencing undefined location
+# Level: Errors (no dependencies)
+# Tests: Proper error message for non-existent @location
+# Expected: Error about undefined location '@DoesNotExist'
+
+languagesystem DFLT dflt;
+
+# Define one location
+locationDef wght=400d @Regular;
+
+# Reference a location that doesn't exist
+valueRecordDef (@DoesNotExist:50) VAL1;

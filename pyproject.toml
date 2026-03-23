@@ -1,12 +1,111 @@
 [build-system]
 requires = [
-	"setuptools",
-	"wheel",
-	"setuptools_scm",
-	"scikit-build",
-	"cmake",
-	"ninja"
+    "scikit-build-core",
+    "setuptools-scm",
+    "cython",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "scikit_build_core.build"
+
+[project]
+dynamic = ["version"]
+name = "afdko"
+description = "Adobe Font Development Kit for OpenType"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache License, Version 2.0"}
+keywords = ["font", "development", "tools"]
+authors = [
+    {email = "afdko@adobe.com"},
+    {name = "Adobe Type team & friends"}
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "lxml >= 6.0.0",
+    "booleanOperations >= 0.9.0",
+    "defcon[lxml,pens] >= 0.10.3",
+    "fontMath >= 0.9.4",
+    "fontTools[unicode,woff,lxml,ufo] >= 4.59.0",  # 4.59.0+ removes fs/pkg_resources dependency
+    "tqdm >= 4.66.1",
+    "ufonormalizer >= 0.6.2",
+    "ufoProcessor >= 1.13.1",
+]
+
+[project.urls]
+repository = "https://github.com/adobe-type-tools/afdko"
+documentation = "https://github.com/adobe-type-tools/afdko/tree/develop/docs"
+changelog = "https://github.com/adobe-type-tools/afdko/blob/develop/NEWS.md"
+
+[project.scripts]
+addfeatures = "afdko._deprecated:addfeatures_wrapper"
+detype1 = "afdko._deprecated:detype1_wrapper"
+mergefonts = "afdko._deprecated:mergefonts_wrapper"
+rotatefont = "afdko._deprecated:rotatefont_wrapper"
+sfntdiff = "afdko._deprecated:sfntdiff_wrapper"
+sfntedit = "afdko._deprecated:sfntedit_wrapper"
+spot = "afdko._deprecated:spot_wrapper"
+tx = "afdko._deprecated:tx_wrapper"
+type1 = "afdko._deprecated:type1_wrapper"
+buildcff2vf = "afdko._deprecated:buildcff2vf_wrapper"
+buildmasterotfs = "afdko._deprecated:buildmasterotfs_wrapper"
+checkoutlinesufo = "afdko._deprecated:checkoutlinesufo_wrapper"
+comparefamily = "afdko._deprecated:comparefamily_wrapper"
+makeinstancesufo = "afdko._deprecated:makeinstancesufo_wrapper"
+makeotf = "afdko._deprecated:makeotf_wrapper"
+makeotfexe = "afdko._deprecated:makeotfexe_wrapper"
+otc2otf = "afdko._deprecated:otc2otf_wrapper"
+otf2otc = "afdko._deprecated:otf2otc_wrapper"
+otf2ttf = "afdko._deprecated:otf2ttf_wrapper"
+ttfcomponentizer = "afdko._deprecated:ttfcomponentizer_wrapper"
+ttfdecomponentizer = "afdko._deprecated:ttfdecomponentizer_wrapper"
+ttxn = "afdko._deprecated:ttxn_wrapper"
+charplot = "afdko._deprecated:charplot_wrapper"
+digiplot = "afdko._deprecated:digiplot_wrapper"
+fontplot = "afdko._deprecated:fontplot_wrapper"
+fontplot2 = "afdko._deprecated:fontplot2_wrapper"
+fontsetplot = "afdko._deprecated:fontsetplot_wrapper"
+hintplot = "afdko._deprecated:hintplot_wrapper"
+waterfallplot = "afdko._deprecated:waterfallplot_wrapper"
+otfautohint = "afdko._deprecated:otfautohint_wrapper"
+otfstemhist = "afdko._deprecated:otfstemhist_wrapper"
+afdko = "afdko.invoker:main"
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+    "pytest-cov >= 2.6.1",
+    "pytest-xdist >= 2.5.0",
+    "uharfbuzz >= 0.45.0",  # For variable font shaping tests
+]
+
+[tool.scikit-build]
+# cmake.verbose = true
+# logging.level = "INFO"
+experimental = true
+minimum-version = "0.5"
+cmake.minimum-version = "3.16"
+sdist.exclude = [".github"]
+
+# Dynamic version from git tags
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 
 [tool.setuptools_scm]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:tostring:DeprecationWarning",
+    "ignore:fromstring:DeprecationWarning",
+    "ignore:The py23 module:DeprecationWarning",
+]

@@ -6,12 +6,12 @@ layout: default
 OpenType™ Feature File Specification
 ---
 
-Copyright 2015-2021 Adobe. All Rights Reserved. This software is licensed as
+Copyright 2015-2024 Adobe. All Rights Reserved. This software is licensed as
 OpenSource, under the Apache License, Version 2.0. This license is available at:
 http://opensource.org/licenses/Apache-2.0.
 
-Document version 1.26
-Last updated 7 June 2021
+Document version 1.27
+Last updated 7 October 2024
 
 **Caution: Portions of the syntax unimplemented by Adobe are subject to change.**
 
@@ -23,14 +23,17 @@ Last updated 7 June 2021
   - [b. White space](#2.b)
   - [c. Keywords](#2.c)
   - [d. Special characters](#2.d)
-  - [e. Numbers and other metrics](#2.e)
-    - [i.   Number](#2.e.i)
-    - [ii.  Metric](#2.e.ii)
-    - [iii. Device table](#2.e.iii)
-    - [iv.  Value record](#2.e.iv)
-    - [v.   Named value record](#2.e.v)
-    - [vi.  Contour point](#2.e.vi)
-    - [vii. Anchor](#2.e.vii)
+  - [e. Numbers, locations, and metrics](#2.e)
+    - [i.    Number](#2.e.i)
+    - [ii.   Metric](#2.e.ii)
+    - [iia.  Variable location specifier](#2.e.iia)
+    - [iib.  Named location](#2.e.iib)
+    - [iii.  Device table](#2.e.iii)
+    - [iv.   Value record](#2.e.iv)
+    - [v.    Named value record](#2.e.v)
+    - [vi.   Contour point](#2.e.vi)
+    - [vii.  Anchor](#2.e.vii)
+    - [viii. Named anchor](#2.e.viii)
   - [f. Glyphs](#2.f)
     - [i.  Glyph name](#2.f.i)
     - [ii. CID](#2.f.ii)
@@ -189,6 +192,7 @@ contexts.
 [`include_dflt`](#4.b.ii)<br>
 [`language`](#4.b.ii)<br>
 [`languagesystem`](#4.b.i)<br>
+[`locationDef`](#2.e.iib)<br>
 [`lookup`](#4.e)<br>
 [`lookupflag`](#4.d)<br>
 [`mark`](#6.d) (can also be used as a [tag](#2.h) or [lookup block label](#2.i))<br>
@@ -232,7 +236,7 @@ table/feature blocks:
 | [`LigatureCaretByPos`](#9.b) | GDEF table | ✅ |
 | [`FontRevision`](#9.c) | head table | ✅ |
 | [`Ascender`](#9.d) | hhea table | ✅ |
-| [`CaretOffset`](#9.d) | hhea table | ✅ |
+| [`CaretOffset`](#9.d) | hhea,vhea table | ✅ |
 | [`Descender`](#9.d) | hhea table | ✅ |
 | [`LineGap`](#9.d) | hhea table | ✅ |
 | [`CapHeight`](#9.f) | OS/2 table | ✅ |
@@ -260,6 +264,18 @@ table/feature blocks:
 | [`location`](#9.i) | STAT table | ✅ |
 | [`ElidableAxisValueName`](#9.i) | STAT table | ✅ |
 | [`OlderSiblingFontAttribute`](#9.i) | STAT table | ✅ |
+| [`CaretSlopeRise`](#9.d) | hhea,vhea table | ✅ |
+| [`CaretSlopeRun`](#9.d) | hhea,vhea table | ✅ |
+| [`SubscriptXSize`](#9.f) | OS/2 table | ✅ |
+| [`SubscriptXOffset`](#9.f) | OS/2 table | ✅ |
+| [`SubscriptYSize`](#9.f) | OS/2 table | ✅ |
+| [`SubscriptYOffset`](#9.f) | OS/2 table | ✅ |
+| [`SuperscriptXSize`](#9.f) | OS/2 table | ✅ |
+| [`SuperscriptXOffset`](#9.f) | OS/2 table | ✅ |
+| [`SuperscriptYSize`](#9.f) | OS/2 table | ✅ |
+| [`SuperscriptYOffset`](#9.f) | OS/2 table | ✅ |
+| [`StrikeoutSize`](#9.f) | OS/2 table | ✅ |
+| [`StrikeoutPosition`](#9.f) | OS/2 table | ✅ |
 
 The following are keywords only where a tag is expected:
 
@@ -274,20 +290,22 @@ dflt  # can be used only with the language keyword and as the language value wit
     #    pound sign       Denotes start of comment
     ;    semicolon        Terminates a statement
     ,    comma            Separator in various lists
-    @    at sign          Identifies glyph class names
+    @    at sign          Identifies glyph class names and designspace locations
     \    backslash        Identifies CIDs. Distinguishes glyph names from an identical keyword
-    -    hyphen           Denotes glyph ranges in a glyph class
+    -    hyphen           Denotes glyph ranges in a glyph class or the smallest decrease of an axis location
+    +    plus sign        Denotes the smallest increase of an axis location
+    :    colon            Separates a location specifier from the value at that location
     =    equal sign       Glyph class assignment operator
     '    single quote     Marks a glyph or glyph class for contextual substitution or positioning
     " "  double quotes    Enclose a name table string
     { }  braces           Enclose a feature, lookup, table, or anonymous block
     [ ]  square brackets  Enclose components of a glyph class
     < >  angle brackets   Enclose a device, value record, contour point, anchor, or caret
-    ( )  parentheses      Enclose the file name to be included
+    ( )  parentheses      Enclose the file name to be included or enclose a variable value
 
 
 <a name="2.e"></a>
-## 2.e. Numbers and other metrics
+## 2.e. Numbers, locations, and metrics
 
 <a name="2.e.i"></a>
 #### 2.e.i. Number
@@ -307,7 +325,66 @@ A `<metric>` value is simply a `<number>` in font design units. It is used in
 value records [§[2.e.iv](#2.e.iv)] for positioning rules, as well as to express
 the values of various table fields [§[9](#9)].
 
-_[ Note: Multiple master support has been withdrawn as of OpenType specification 1.3. ]_
+<a name="2.e.iia"></a>
+#### 2.e.iia. Variable location specifier
+
+A `<location>` represents a position in a font's variable design space.
+Variable locations are specified by a comma-separated list of axis location specifiers,
+at most one per axis. An axis is represented by its tag, and the position is specified
+by an axis value and a unit letter:
+
+```fea
+wght=800
+wght=1000d, opsz=0n
+```
+
+There are three unit letters, each of which indicates how the number after the
+equal sign is interpreted. `u` indicates the number is expressed in "user"
+units—the "input" values in a variable font's designspace axis map. `d`
+indicates the number is exprssed in "design" units—the "output" values in a
+variable font's designspace axis map. (The design units of an _axis_, which are
+typically specified using a mapping in the axis element of a designspace file,
+are not to be confused with the design units of a _font_, which specify x or y
+coordinates of a glyph.) `n` indicates the number is expressed in normalized
+units.  A normalized value is at least -1 and at most 1, with -1 being the axis
+minimum, 1 being the maximum, and 0 being the default.
+
+An axis location specifier can optionally end with a plus sign or a hyphen, as in:
+
+```fea
+wght=1000d, opsz=20u+
+wght=1000d-, opsz=20u
+```
+
+A trailing plus sign indicates that the normalied axis value will be calculated
+based according to the number and unit. Then, the minimum F2Dot14 increment
+will be added to it, resulting in an axis location value that is the minimal
+amount greater than the location value without the plus. A trailing hyphen
+analogously specifies an axis location value that is the minimal amount smaller
+than the value without it.
+
+<a name="2.e.iib"></a>
+#### 2.e.iib. Named location
+
+The `locationDef` keyword is used to define a named location. This name can
+then be used in a value record in place of an axis value list. Named locations
+make variable value definitions more compact and easy to read, and any edits to
+the definition of the named location record will change the location in any
+value where the name is used.  The format is:
+
+```fea
+locationDef <location> @name;
+```
+
+The name must always be preceded by `@` (at-sign), in both its defintion and
+references. The character after the `@` must be alphabetic or an underscore,
+the other characters can be any of those plus digits or a period, but
+_cannot_ include a hyphen.  For example:
+
+```fea
+locationDef wght=1000d @Extra_Black;
+locationDef wght=400u, opsz=20u @regular;
+```
 
 <a name="2.e.iii"></a>
 #### 2.e.iii. Device table _[ Currently not implemented. ]_
@@ -346,8 +423,8 @@ This format is used when an undefined `<device>` is needed in a list of `<device
 
 A `<valuerecord>` is used in some positioning rules [§[6](#6)].
 
-Except for format A, a `<valuerecord>` must be enclosed by angle brackets.
-Note that the `<metric>` adjustments indicate values (in
+Except for format A, a `<valuerecord>` must be enclosed either by angle brackets
+or by parentheses.  Note that the `<metric>` adjustments indicate values (in
 design units) to add to (positive values) or subtract from (negative values) the
 placement and advance values provided in the font (in the `hmtx` and `vmtx`
 tables).
@@ -377,7 +454,24 @@ the vertical metric features.
 ##### Value record format B:
 
 ```fea
-<<metric> <metric> <metric> <metric>>
+(<metric> <location>:<metric> <location>:<metric> ...)
+```
+
+A `<vmetric>`, or record format B, is similar to A in how it is used, but
+specifes a single variable value. A `<location>` can either be a location
+specifier [§[2.e.iia](#2.e.iia)] or a location name [§[2.e.iib](#2.e.iib)]. A
+`<metric>` not preceded by a `<location>` and colon is treated as the value for
+the default instance of the font. There must be at most one of these "bare"
+values. For example:
+
+```fea
+(-3 wght=200u:-5 wght=900u:-2)
+```
+
+##### Value record format C:
+
+```fea
+<<(v)metric> <(v)metric> <(v)metric> <(v)metric>>
 ```
 
 Here, the `<metric>` values represent adjustments for x placement, y placement, x
@@ -387,7 +481,34 @@ advance, and y advance, in that order. For example:
 <-80 0 -160 0>       # x placement adjustment: -80; x advance adjustment: -160
 ```
 
-##### Value record format C: _[ Currently not implemented. ]_
+With this format, each adjustment can either be a plain `<metric>` or a variable
+`<vmetric>` like value record format B. For example:
+
+```fea
+<-80 0 (-160 wght=200u:-140 @ExtraBlack:-180) 0>  # x placement adjustment: -80; x advance adjustment default: -160
+```
+
+##### Value record format D:
+
+```fea
+(<<metric> <metric> <metric> <metric>> <location>:<<metric> <metric> <metric> <metric>> ...)
+```
+
+Value record format D combines B and C. Instead of specifying each metric
+separately, as either a plain or a variable value, you specify the four
+adjustments at different locations.  This is equivalent to the previous
+example:
+
+```fea
+(<-80 0 -160 0> wght=200u:<-80 0 -140 0> @ExtraBlack:<-80 0 -180 0>)
+```
+
+When specifying variable values, format C is more suited to cases where only one
+adjustment is variable or different adjustments need to specified at different
+locations. Format D is more suited to cases where more than adjustment is variable
+but all variable values are specified using the same set of locations.
+
+##### Value record format E: _[ Currently not implemented. ]_
 
 ```fea
 <<metric> <metric> <metric> <metric> <device> <device> <device> <device>>
@@ -409,13 +530,13 @@ express the full functionality of an OpenType value record. For example:
 This example specifies adjustments for x placement and x advance, as well as
 device adjustments at 11 and 12 ppem sizes for x placement and x advance.
 
-##### Value record format D, the null value record: _[ Currently not implemented. ]_
+##### Value record format F, the null value record: _[ Currently not implemented. ]_
 
 ```fea
 <NULL> # Value record not defined
 ```
 
-##### Value record format E, the named value record:
+##### Value record format G, the named value record:
 
 ```fea
 <name>
@@ -448,6 +569,7 @@ follows the same rules as are used to form glyph names. For example:
 ```fea
 valueRecordDef -10 FIRST_KERN;
 valueRecordDef <0 0 20 0> SECOND_KERN;
+valueRecordDef <0 0 (20 @ExtraLight:30 @ExtraBlack:10) 0> THIRD_KERN;
 ```
 
 These named value coordinates can then be used in value records. For example:
@@ -488,7 +610,7 @@ An `<anchor>` is used in some positioning rules [§[6](#6)]. It takes 5 formats:
 ##### Anchor format A:
 
 ```fea
-<anchor <metric> <metric>>  # x coordinate, y coordinate
+<anchor <metricpair>>      # x coordinate, y coordinate
 ```
 
 For example:
@@ -500,7 +622,7 @@ For example:
 ##### Anchor format B:
 
 ```fea
-<anchor <metric> <metric>  # x coordinate, y coordinate
+<anchor <metricpair>       # x coordinate, y coordinate
         <contour point>>
 ```
 
@@ -513,7 +635,7 @@ For example:
 ##### Anchor format C:
 
 ```fea
-<anchor <metric> <metric>   # x coordinate, y coordinate
+<anchor <metricpair>        # x coordinate, y coordinate
         <device> <device>>  # x coordinate device, y coordinate device
 ```
 
@@ -544,6 +666,26 @@ For example:
 An anchor name must be defined before it is used – see the following section on
 the `anchorDef` keyword.
 
+A metric pair can be specified in a number of ways but the options fall into
+two patterns.  First, as in the examples above, each metric in the pair can be
+specified separately, with none, either, or both being a `<vmetric>`. For
+example:
+
+```fea
+<anchor 120 -20>
+<anchor 120 (-20 @ExtraLight:-10 @ExtraBlack:-30)>
+<anchor (120 @ExtraLight:115 @ExtraBlack:125) (-20 @ExtraLight:-10 @ExtraBlack:-30)>
+```
+
+Second, the pair can be specified analogously to value record format D:
+
+```fea
+<anchor (<120 -20> @ExtraLight:<115 -10> @ExtraBlack:<125 -30>)>
+```
+
+Note the distinctive aspects of this format: There is only one set of parentheses,
+and each of the values in the pair are enclosed by angle brackets.
+
 <a name="2.e.viii"></a>
 #### 2.e.viii. Named anchor definition
 
@@ -562,7 +704,7 @@ the same rules as are used to form glyph names. For example:
 
 ```fea
 anchorDef 300 0 ANCHOR_1;
-anchorDef 120 -20 contourpoint 5 ANCHOR_2;
+anchorDef (<120 -20> @m:<115 -10> @M:<125 -30>) contourpoint 5 ANCHOR_2;
 ```
 
 These named anchors can then be used in anchor definitions. For example:
@@ -816,9 +958,9 @@ Coverages with non-extension lookups.)
 <a name="2.h"></a>
 ### 2.h. Tags
 
-Tags are four-letter identifiers. These are denoted simply by tag name, without
-any final spaces, and are distinguished from glyph names by context. For
-example:
+Tags are four-letter identifiers. These are usually denoted simply by tag name,
+without any final spaces, and are distinguished from glyph names by context.
+For example:
 
 ```fea
 DEU
@@ -826,32 +968,33 @@ DEU
 
 Note that the final space in the example is implicit.
 
-A tag can only have characters from the following set:
+A "bare" tag must start with a character from the following set:
 
     ABCDEFGHIJKLMNOPQRSTUVWXYZ
     abcdefghijklmnopqrstuvwxyz
-    0123456789
-    .  # period
     _  # underscore
-    !  # Exclamation point
-    $  # Dollar sign
-    %  # Percent sign
-    &  # Ampersand
+
+and the remaining characters can be any of:
+
+    0123456789
+    .  # Period
+    -  # Hyphen
     *  # Asterisk
     +  # Plus sign
     :  # Colon
-    ?  # Question mark
     ^  # Caret
-    '  # Back-quote
     |  # Vertical bar
     ~  # Tilde
 
-and must not start with a digit or hyphen. However, use of characters beyond
-those in production glyph names is not recommended.
+Neither keywords nor axis units (`u`, `d`, `n`) are recognized as tags,
+with the exception of `mark`.  The special language tag `dflt` denotes
+the default language system of the corresponding script.
 
-The keyword `mark` is a valid tag but other (short) keywords are not.  The
-special language tag `dflt` denotes the default language system of the
-corresponding script.
+When it is necessary to specify a tag that falls outside of these requirements,
+the tag string can be put in quotes. The quoted text must be at most four
+characters long, with each ASCII-compatible character falling in the range 0x20
+to 0x7E, with the exception of 0x22. (As of this specification there is no
+provision for including double-quote characters in a quoted tag.)
 
 <a name="2.i"></a>
 ### 2.i. Lookup block labels
@@ -1597,7 +1740,7 @@ has no replacement, removing the input glyph from the glyph sequence:
 substitute a by NULL;
 ```
 
-Omitting the `by` clause is equivalent to adding `by NULL`. 
+Omitting the `by` clause is equivalent to adding `by NULL`.
 
 <a name="5.b"></a>
 ### 5.b. [GSUB LookupType 2] Multiple substitution
@@ -1813,9 +1956,9 @@ This format will assume that the entire input sequence is a sequence of ligature
 components.
 
 ###### Example 5:
-In this example two Multiple Sub lookups are applied to the same input. The rule below means: 
-in lookup `REORDER_CHAIN` the sequence “ka ka.pas_cakra.ns” is first substituted 
-by “ka” and then a second lookup substitutes the remaining “ka” by the sequence “ka.pas_cakra ka”. 
+In this example two Multiple Sub lookups are applied to the same input. The rule below means:
+in lookup `REORDER_CHAIN` the sequence “ka ka.pas_cakra.ns” is first substituted
+by “ka” and then a second lookup substitutes the remaining “ka” by the sequence “ka.pas_cakra ka”.
 
 ```fea
 lookup REMOVE_CAKRA {
@@ -1973,7 +2116,7 @@ reversesub [a e n] d' by d.alt;
 
 As with `substitute`, if the replacement glyph is the reserved word `NULL`
 then the reverse substitution has no replacement, removing the glyph from the
-sequence.  Omitting the `by` clause is equivalent to adding `by NULL`. 
+sequence.  Omitting the `by` clause is equivalent to adding `by NULL`.
 
 <a name="6"></a>
 ## 6. Glyph positioning (GPOS) rules
@@ -2506,7 +2649,7 @@ rules will then be in a single lookup, only one rule will match in any context,
 and there is no need to figure out which rules add up. This solution is shown in
 example 3B using feature file syntax for contextual positioning. Notice,
 however, that the triplet rule has to be defined before the other two rules.
-Otherwise, the pair positioning rules will block the triplet’s positioning 
+Otherwise, the pair positioning rules will block the triplet’s positioning
 adjustment.
 
 ###### Example 3B:
@@ -2589,10 +2732,10 @@ feature kern {
 } test;
 ```
 
-In this example the rule in the kern feature will match the sequence “a b” and apply 
-multiple lookups to the input “a”. The first lookup will subtract 80 units from the 
-x placement and 160 units from the x advance of “a”. The second lookup will adjust 
-the y placement of “a” by 100 units. 
+In this example the rule in the kern feature will match the sequence “a b” and apply
+multiple lookups to the input “a”. The first lookup will subtract 80 units from the
+x placement and 160 units from the x advance of “a”. The second lookup will adjust
+the y placement of “a” by 100 units.
 
 
 ###### Example 7:
@@ -2620,9 +2763,9 @@ feature dist {
     lookup ADD_ADVANCE_WIDTH;
 } dist;
 ```
-In this example the rules in `ADD_ADVANCE_WIDTH` will match the sequences “ka-gran repha-gran anusvara-gran”, 
+In this example the rules in `ADD_ADVANCE_WIDTH` will match the sequences “ka-gran repha-gran anusvara-gran”,
 “ka-gran repha-gran”, or “ka-gran anusvara-gran” and apply multiple lookups to the input. Here
-each lookup adds advance width to “ka-gran” based on the following glyphs. 
+each lookup adds advance width to “ka-gran” based on the following glyphs.
 
 <a name="6.h.iv"></a>
 #### 6.h.iv. Specifying Contextual Positioning with in-line cursive positioning rules
@@ -3177,7 +3320,7 @@ A `<script record>` is of the form:
 
 ```fea
 # Format A
-<number>
+<(v)number>
 
 # Format B
 <number> <glyph> <number>
@@ -3185,6 +3328,9 @@ A `<script record>` is of the form:
 # Format C
 <number> <device>
 ```
+
+For a variable font, the number in format A can either be plain or be a
+variable value specified according to value record format B.
 
 The baseline tags for each `BaseTagList` must be sorted in increasing ASCII
 order.
@@ -3228,13 +3374,14 @@ table GDEF {
     Attach        <glyph|glyphclass> <number>+; # <number> is a contour point index
 
     LigatureCaretByDev # Currently not implemented
-    LigatureCaretByPos <glyph|glyphclass> <caret position value>+;
+    LigatureCaretByPos <glyph|glyphclass> <(v)position>+;
     LigatureCaretByIndex <glyph|glyphclass> <caret contour point index value>+;
 } GDEF;
 ```
 
 The number of `<caret value>`s specified for a LigatureCaret must be: (number of
-ligature components) - 1.
+ligature components) - 1.  When using LigatureCaretByPos, the position can be
+variable (analogous to value record [§[2.e.iv](#2.e.iv)] format B).
 
 Only one `LigatureCaret` rule may be specified per glyph, whether it is
 `LigatureCaretByPos` or `LigatureCaretByIndex`.
@@ -3337,7 +3484,9 @@ The decimal and Fixed values are equal in this case.
 
 ```fea
 table hhea {
-    CaretOffset <metric>;
+    CaretOffset <(v)metric>;
+    CaretSlopeRise <(v)metric>;
+    CaretSlopeRun <(v)metric>;
     Ascender <metric>;
     Descender <metric>;
     LineGap <metric>;
@@ -3348,9 +3497,9 @@ For example:
 
 ```fea
 table hhea {
-    CaretOffset -50;
+    CaretOffset (-50 @m:-40 @M:-60);
     Ascender 800;
-    Descender 200;
+    Descender -200; # Note that Descender is negative for descent below the baseline.
     LineGap 200;
 } hhea;
 ```
@@ -3466,19 +3615,29 @@ table OS/2 {
     Panose <panose number>;
     UnicodeRange <Unicode range list>;
     CodePageRange <code page list>;
-    TypoAscender <metric>;
-    TypoDescender <metric>;
-    TypoLineGap <metric>;
-    winAscent <metric>;
-    winDescent <metric>;
-    XHeight <metric>;
-    CapHeight <metric>;
+    TypoAscender <(v)metric>;
+    TypoDescender <(v)metric>;
+    TypoLineGap <(v)metric>;
+    winAscent <(v)metric>;
+    winDescent <(v)metric>;
+    XHeight <(v)metric>;
+    CapHeight <(v)metric>;
     WeightClass <number>;
     WidthClass <number>;
     Vendor <string>;
     LowerOpSize <number>;
     UpperOpSize <number>;
     FamilyClass <number>;
+    SubscriptXSize <(v>metric>;
+    SubscriptXOffset <(v>metric>;
+    SubscriptYSize <(v>metric>;
+    SubscriptYOffset <(v>metric>;
+    SuperscriptXSize <(v>metric>;
+    SuperscriptXOffset <(v>metric>;
+    SuperscriptYSize <(v>metric>;
+    SuperscriptYOffset <(v>metric>;
+    StrikeoutSize <(v>metric>;
+    StrikeoutPosition <(v>metric>;
 } OS/2;
 ```
 
@@ -3489,6 +3648,9 @@ automatically padded with spaces. A longer vendor ID causes an error.
 
 `<Unicode range list>` is a space-separated list of Unicode bit numbers from the
 OpenType specification for the [**ulUnicodeRange1-4** in the OS/2 table](https://docs.microsoft.com/en-us/typography/opentype/spec/os2#ur).
+
+Values marked as `<(v)metric>` can be specified as either a plain metric or a
+variable metric.
 
 `<code page list>` is a space-separated list of Windows code page numbers from the
 OpenType specification for the [**ulCodePageRange1-2** in the OS/2 table](https://docs.microsoft.com/en-us/typography/opentype/spec/os2#cpr).
@@ -3550,9 +3712,12 @@ removed before processing.
 
 ```fea
 table vhea {
-    VertTypoAscender <number>;
-    VertTypoDescender <number>;
-    VertTypoLineGap <number>;
+    CaretOffset <(v)metric>;
+    CaretSlopeRise <(v)metric>;
+    CaretSlopeRun <(v)metric>;
+    VertTypoAscender <(v)metric>;
+    VertTypoDescender <(v)metric>;
+    VertTypoLineGap <(v)metric>;
 } vhea;
 ```
 
@@ -3578,8 +3743,8 @@ assigned to a glyph as follows:
 
 ```fea
 table vmtx {
-    VertOriginY <glyph> <number1>;
-    VertAdvanceY <glyph> <number2>;
+    VertOriginY <glyph> <(v)metric>;
+    VertAdvanceY <glyph> <(v)metric>;
 } vmtx;
 ```
 
@@ -3640,7 +3805,7 @@ ElidedFallbackNameID <name ID>;
 
 #### Design axes
 All of the design axes defined in the `fvar` table must be present in the `STAT`
-table as well, but the order is not required to be the same. The `STAT` table 
+table as well, but the order is not required to be the same. The `STAT` table
 may also contain additional design axes not defined in the `fvar`.
 
 ```fea
@@ -3685,7 +3850,7 @@ axes in the table. `value` is a signed number specified as decimal (with
 optional fractional part) in the range -32767.0 to +32767.99998.
 
 With a single `location` statement the `AxisValue` will be format 1.
-If there are more than one `location` statements the `AxisValue` will be 
+If there are more than one `location` statements the `AxisValue` will be
 format 4.
 
 ##### location format B (used in Axis value table [Format 2](https://docs.microsoft.com/en-us/typography/opentype/spec/stat#axis-value-table-format-2))
@@ -3693,12 +3858,12 @@ format 4.
 location <axisTag> <nominalValue> <rangeMinValue> <rangeMaxValue>;
 ```
 
-Format for `axisTag` and the other values as above. To specify an open ended 
-range use `-32767` to mean negative infinity and `32767.99998` to mean positive infinity. 
-For example, the following AxisValue definitions mean that "Regular" on the 
-`wght` axis is defined with a nominal value of 400 and a range covering all 
-possible values below 400 up to and including 649. "Bold" is defined with a 
-nominal value of 700 and a range covering all values from 650 and above. 
+Format for `axisTag` and the other values as above. To specify an open ended
+range use `-32767` to mean negative infinity and `32767.99998` to mean positive infinity.
+For example, the following AxisValue definitions mean that "Regular" on the
+`wght` axis is defined with a nominal value of 400 and a range covering all
+possible values below 400 up to and including 649. "Bold" is defined with a
+nominal value of 700 and a range covering all values from 650 and above.
 ```fea
    AxisValue {
       location wght 400 -32768 650;
@@ -3719,7 +3884,7 @@ location <axisTag> <value> <linkedValue>;
 
 Format for `axisTag` and the other values as above.
 
-In the following example the `linkedValue` is used to style-link "Regular" and "Bold". 
+In the following example the `linkedValue` is used to style-link "Regular" and "Bold".
 
 ```fea
    AxisValue {
@@ -3735,8 +3900,8 @@ There can be only one `location` statement when this format is used (the axis
 value will be `STAT` format 3 `AxisValue`).
 
 #### Example 1:
-These examples are for illustrative purposes only; they won’t all be in a 
-single STAT table. See Example 2 for a fully defined STAT table. 
+These examples are for illustrative purposes only; they won’t all be in a
+single STAT table. See Example 2 for a fully defined STAT table.
 
 ```fea
 table STAT {
@@ -3786,7 +3951,7 @@ table STAT {
 #### Example 2:
 This example shows two fully defined STAT tables with three axes in format 2.
 These link an Upright variable font and an Italic variable font with the `ital`
-axis. 
+axis.
 
 For Upright:
 ```fea
@@ -3834,7 +3999,7 @@ table STAT {
         location wght 800 750 850;
         name "ExtraBold";
     };
-    
+
     AxisValue {
         location wght 900 850 900;
         name "Black";
@@ -3844,18 +4009,18 @@ table STAT {
         location opsz 6 5 8;
         name "Caption";
     };
-    
+
     AxisValue {
         location opsz 10 8 24;
         name "Text";
         flag ElidableAxisValueName;
     };
-    
+
     AxisValue {
         location opsz 60 24 100;
         name "Display";
     };
-    
+
     AxisValue {
         location ital 0 1;
         name "Roman";
@@ -3911,7 +4076,7 @@ table STAT {
         location wght 800 750 850;
         name "ExtraBold";
     };
-    
+
     AxisValue {
         location wght 900 850 900;
         name "Black";
@@ -3921,18 +4086,18 @@ table STAT {
         location opsz 6 5 8;
         name "Caption";
     };
-    
+
     AxisValue {
         location opsz 10 8 24;
         name "Text";
         flag ElidableAxisValueName;
     };
-    
+
     AxisValue {
         location opsz 60 24 100;
         name "Display";
     };
-    
+
     AxisValue {
         location ital 1 0;
         name "Italic";
@@ -3965,7 +4130,7 @@ anon sbit {
     72  % dpi
     sizes {
         10, 12, 14 source {
-            all "Generic/JGeneric"
+            oall "Generic/JGeneric"
         }
     }
 } sbit;
@@ -3998,10 +4163,21 @@ along with the tag `sbit`.
 <a name="11"></a>
 ## 11. Document revisions
 
+**v1.27 [7 October 2024]:**
+*   Added syntax for specifying variable values when building
+    a variable font, including [variable locations](#2.e.iia) and
+    [named locations](#2.e.iib). Modified sections include
+    [#2.e.iv value record](#2.e.iv), [#2.e.vii Anchor](#2.e.vii),
+    [#2.e.viii named anchor](#2.e.viii), [#9.b GDEF](#9.b), [#9.d hhea](#9.d),
+    [#9.f OS/2](#9.f), and [#9.g vhea](#9.g).
+    New sections [#2.e.iia](#2.e.iia) and [#2.e.iib](#2.e.iib) were inserted
+    using alpha suffixes to avoid renumbering existing sections.
+    The handling of unusual characters in [#2.h tags](#2.h) was also changed.
+
 **v1.26 [7 June 2021]:**
-*   Clarified syntax of [keywords](#2.c), [glyph names](#2.f.i), 
+*   Clarified syntax of [keywords](#2.c), [glyph names](#2.f.i),
     [named glyph classes](#2.g.iii), [tags](#2.h),
-    [lookup block labels](#2.i), and [include directives](#3), 
+    [lookup block labels](#2.i), and [include directives](#3),
     in light of new makeotfexe parser implementation.
 
 **v1.25.1 [5 July 2020]:**
@@ -4011,7 +4187,7 @@ along with the tag `sbit`.
 
 *   Added syntax for STAT table as discussed in
     [GitHub issue #176](https://github.com/adobe-type-tools/afdko/issues/176).
-*   Updated Chaining Contextual lookups to allow application of more than one 
+*   Updated Chaining Contextual lookups to allow application of more than one
     lookup at the same position as explained in
     [GitHub issue #1119](https://github.com/adobe-type-tools/afdko/issues/1119).
     See [GSUB LookupType 6](#5.f.i) and [GPOS LookupType 8](#6.h.i).

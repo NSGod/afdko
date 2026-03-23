@@ -4,24 +4,33 @@
 Internal representation of a T2 CharString glyph with hints
 """
 
-import numbers
 import threading
 import operator
 from copy import deepcopy
 from math import sqrt
 from collections import defaultdict
 from builtins import tuple as _tuple
-from fontTools.misc.bezierTools import (solveQuadratic, solveCubic,
-                                        calcCubicParameters,
-                                        splitCubicAtT, segmentPointAtT,
-                                        approximateCubicArcLength)
+from typing import Iterator, Any, Callable
+from typing_extensions import Self
+
+from fontTools.misc.bezierTools import (
+    solveQuadratic,
+    solveCubic,
+    calcCubicParameters,
+    splitCubicAtT,
+    segmentPointAtT,
+    approximateCubicArcLength,
+)
 from fontTools.pens.basePen import BasePen
 
 import logging
+
+from . import Number
+
 log = logging.getLogger(__name__)
 
 
-def norm_float(value):
+def norm_float(value: int | float) -> int | float:
     """Converts a float (whose decimal part is zero) to integer"""
     if isinstance(value, float):
         value = round(value, 4)
@@ -31,12 +40,12 @@ def norm_float(value):
     return value
 
 
-def feq(a, b, factor=1.52e-5):
+def feq(a: int | float, b: int | float, factor: float = 1.52e-5) -> bool:
     """Returns True if a and b are close enough to be considered equal"""
     return abs(a - b) < factor
 
 
-def fne(a, b, factor=1.52e-5):
+def fne(a: int | float, b: int | float, factor: float = 1.52e-5) -> bool:
     """Returns True if a and b are not close enough to be considered equal"""
     return abs(a - b) >= factor
 
@@ -48,7 +57,7 @@ class pt(tuple):
     tl.align = None
 
     @classmethod
-    def setAlign(cls, vertical=False):
+    def setAlign(cls, vertical: bool = False) -> None:
         """
         Class-level method to control the value of properties a and o.
         "a" is meant so suggest "aligned" and "o" is meant to suggest
@@ -69,14 +78,19 @@ class pt(tuple):
             cls.tl.align = 1
 
     @classmethod
-    def clearAlign(cls):
+    def clearAlign(cls) -> None:
         """
         Class-level method to unset the internal align variable
         so that accessing properties a or o will result in an error
         """
         cls.tl.align = None
 
-    def __new__(cls, x=0, y=0, roundCoords=False):
+    def __new__(
+        cls,
+        x: int | float | tuple[int, int] = 0,
+        y: int | float = 0,
+        roundCoords: bool = False
+    ):
         """
         Creates a new pt object initialied with x and y.
 
@@ -91,15 +105,15 @@ class pt(tuple):
         return _tuple.__new__(cls, (x, y))
 
     @property
-    def x(self):
+    def x(self) -> Number:
         return self[0]
 
     @property
-    def y(self):
+    def y(self) -> Number:
         return self[1]
 
     @property
-    def a(self):
+    def a(self) -> int:
         """See note in setAlign"""
         if self.tl.align == 1:
             return self[0]
@@ -110,7 +124,7 @@ class pt(tuple):
                                "setting align")
 
     @property
-    def o(self):
+    def o(self) -> int:
         """See note in setAlign"""
         if self.tl.align == 1:
             return self[1]
@@ -143,7 +157,7 @@ class pt(tuple):
             raise TypeError('Both arguments to pt.__add__ must be pts')
         return pt(self[0] + other[0], self[1] + other[1])
 
-    def __sub__(self, other):
+    def __sub__(self, other: "pt") -> "pt":
         """
         Returns a new pt object representing the difference of respective
         values of the two arguments
@@ -161,7 +175,7 @@ class pt(tuple):
             raise TypeError('Both arguments to pt.avg must be pts')
         return pt((self[0] + other[0]) * 0.5, (self[1] + other[1]) * 0.5)
 
-    def dot(self, other):
+    def dot(self, other: "pt") -> int:
         """
         Returns a numeric value representing the dot product of this
         pt object with the argument
@@ -190,31 +204,31 @@ class pt(tuple):
         dy = self[1] - other[1]
         return dx * dx + dy * dy
 
-    def a_dist(self, other):
+    def a_dist(self, other: "pt") -> int:
         """
         Returns a numerical value representing the distance between this
         pt object and the argument in the "a" dimension
         """
         return abs((self - other).a)
 
-    def o_dist(self, other):
+    def o_dist(self, other: "pt") -> int:
         """
         Returns a numerical value representing the distance between this
         pt object and the argument in the "o" dimension
         """
         return abs((self - other).o)
 
-    def normsq(self):
+    def normsq(self) -> int:
         """Returns the squared magnitude of the pt (treated as a vector)"""
         return self[0] * self[0] + self[1] * self[1]
 
-    def abs(self):
+    def abs(self) -> "pt":
         """
         Returns a new pt object with the absolute values of the coordinates
         """
         return pt(abs(self[0]), abs(self[1]))
 
-    def round(self, dec=0):
+    def round(self, dec: int = 0):
         """Returns a new pt object with rounded coordinate values"""
         return pt(round(self[0], dec), round(self[1], dec))
 
@@ -224,24 +238,28 @@ class pt(tuple):
         Returns a new pt object with this object's coordinates multiplied by
         a scalar value
         """
-        if not isinstance(other, numbers.Number):
+        if not isinstance(other, (int, float)):
             raise TypeError('One argument to pt.__mul__ must be a scalar ' +
                             'number')
         return pt(self[0] * other, self[1] * other)
 
     def __rmul__(self, other):
         """Same as __mul__ for right-multiplication"""
-        if not isinstance(other, numbers.Number):
+        if not isinstance(other, (int, float)):
             raise TypeError('One argument to pt.__rmul__ must be a scalar ' +
                             'number')
         return pt(self[0] * other, self[1] * other)
 
-    def __eq__(self, other, factor=1.52e-5):
+    def __eq__(
+        self, other: object, factor: float = 1.52e-5
+    ) -> bool:  # type: ignore[override]
         """Returns True if each coordinate is feq to that of the argument"""
+        if not isinstance(other, pt):
+            return NotImplemented
         return (feq(self[0], other[0], factor) and
                 feq(self[1], other[1], factor))
 
-    def eq_exact(self, other):
+    def eq_exact(self, other: "pt") -> bool:
         """Returns True if each coordinate is equal to that of the argument"""
         return self[0] == other[0] and self[1] == other[1]
 
@@ -259,22 +277,22 @@ class stem(tuple):
     BandMargin = 30
     __slots__ = ()
 
-    def __new__(cls, lb=0, rt=0):
+    def __new__(cls, lb: Number = 0, rt: Number = 0):
         if isinstance(lb, tuple):
             return _tuple.__new__(cls, lb)
         return _tuple.__new__(cls, (lb, rt))
 
     @property
-    def lb(self):
+    def lb(self) -> int | float:
         """The left or bottom value, depending on stem alignment"""
         return self[0]
 
     @property
-    def rt(self):
+    def rt(self) -> int | float:
         """The right or top value, depending on stem alignment"""
         return self[1]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string representation of the stem"""
         isgh = self.isGhost()
         isbad = self.isBad()
@@ -287,7 +305,7 @@ class stem(tuple):
         else:
             return "(bad stem values {0}, {1})".format(self.lb, self.rt)
 
-    def isGhost(self, doBool=False):
+    def isGhost(self, doBool: bool = False) -> str | bool:
         """Returns True if the stem is a ghost hint"""
         width = self.rt - self.lb
         if width == -20:   # from topGhst in ac.h
@@ -296,7 +314,7 @@ class stem(tuple):
             return "low" if not doBool else True
         return False
 
-    def ghostCompat(self, other):
+    def ghostCompat(self, other: "stem") -> bool:
         if self.isGhost(True) == other.isGhost(True):
             return False
         if self.isGhost() == 'high' or other.isGhost() == 'high':
@@ -304,11 +322,11 @@ class stem(tuple):
         else:
             return self.lb == other.lb
 
-    def isBad(self):
+    def isBad(self) -> bool:
         """Returns True if the stem is malformed"""
         return not self.isGhost() and (self.rt - self.lb) < 0
 
-    def relVals(self, last=None):
+    def relVals(self, last: "stem | None" = None) -> tuple[Number, Number]:
         """
         Returns a tuple of "relative" stem values (start relative to
         the passed last stem, then width) appropriate for
@@ -320,11 +338,11 @@ class stem(tuple):
             l = 0
         return (norm_float(self.lb - l), norm_float(self.rt - self.lb))
 
-    def UFOVals(self):
+    def UFOVals(self) -> tuple[Number, Number]:
         """Returns a tuple of stem values appropriate for UFO output"""
         return (self.lb, self.rt - self.lb)
 
-    def overlaps(self, other):
+    def overlaps(self, other: "stem") -> bool:
         """
         Returns True if this stem is within BandMargin of overlapping the
         passed stem
@@ -346,7 +364,7 @@ class stem(tuple):
         lloc -= stem.BandMargin
         return olloc <= uloc and ouloc >= lloc
 
-    def distance(self, loc):
+    def distance(self, loc: int) -> int | float:
         """
         Returns the distance between this stem and the passed location,
         which is zero if the location falls within the stem
@@ -368,7 +386,7 @@ class boundsState:
     Calculates and stores the bounds of a pathElement (spline) and the point
     locations that define the boundaries.
     """
-    def __init__(self, c):
+    def __init__(self, c) -> None:
         """
         Initialize the object with the passed pathElement and calculate the
         bounds
@@ -389,7 +407,7 @@ class boundsState:
             else:
                 self.bounds = self.lb
 
-    def mergePt(self, b, p, t, doExt=True):
+    def mergePt(self, b, p, t, doExt: bool = True) -> None:
         """
         Add the passed point into the bounds as a potential extreme.
 
@@ -416,7 +434,7 @@ class boundsState:
         self.mergePt(lb, c.e, 1)
         return lb
 
-    def calcCurveBounds(self, pe):
+    def calcCurveBounds(self, pe) -> None:
         """
         Calculate the bounds of the passed path element relative to the
         already-calculated linear bounds
@@ -435,7 +453,7 @@ class boundsState:
 
         self.bounds = curveb
 
-    def farthestExtreme(self, doY=False):
+    def farthestExtreme(self, doY: bool = False):
         """
         Returns the location, defining point, and t value for the
         bound farthest from the linear bounds in the dimension selected
@@ -454,7 +472,7 @@ class boundsState:
         else:
             return 0, None, None, None
 
-    def intersects(self, other, margin=0):
+    def intersects(self, other, margin: int = 0):
         """
         Returns True if the bounds of this object are within those of
         the argument
@@ -470,12 +488,12 @@ class pathBoundsState:
     Calculates and stores the bounds of a glyphData object (path) and
     the pathElements (splines) that define the boundaries.
     """
-    def __init__(self, pe):
+    def __init__(self, pe) -> None:
         """Initialize the bounds with those of a single pathElement"""
         self.bounds = pe.getBounds().bounds
         self.extpes = [[pe, pe], [pe, pe]]
 
-    def merge(self, other):
+    def merge(self, other) -> None:
         """Merge this pathBoundsState object with the bounds of another"""
         for i, cmp_o in enumerate([operator.lt, operator.gt]):
             for j in range(2):
@@ -517,8 +535,19 @@ class pathElement:
     tSlop = .005
     middleMult = 2
 
-    def __init__(self, *args, is_close=False, masks=None, flex=False,
-                 position=None):
+    s: pt
+    e: pt
+    cs: pt
+    ce: pt
+
+    def __init__(
+        self,
+        *args,
+        is_close: bool = False,
+        masks=None,
+        flex: bool = False,
+        position=None
+    ) -> None:
         self.is_line = False
         self.is_close = is_close
         for p in args:
@@ -541,34 +570,35 @@ class pathElement:
                             'pathElement.__init__')
         self.masks = masks
         self.flex = flex
-        self.bounds = None
-        self.position = position
-        self.segment_sub = None
+        self.bounds: boundsState | None = None
+        self.position: tuple[int, int] = position or (-1, -1)
+        self.segment_sub: list["pathElement"] | int | None = None
 
-    def getBounds(self):
+    def getBounds(self) -> boundsState:
         """Returns the bounds object for the object, generating it if needed"""
-        if self.bounds:
+        if self.bounds is not None:
             return self.bounds
         self.bounds = boundsState(self)
         return self.bounds
 
-    def clearTempState(self):
+    def clearTempState(self) -> None:
         self.bounds = None
         self.segment_sub = None
 
-    def isLine(self):
+    def isLine(self) -> bool:
         """Returns True if the spline is a line"""
         return self.is_line
 
-    def isClose(self):
+    def isClose(self) -> bool:
         """Returns True if this pathElement implicitly closes a subpath"""
         return self.is_close
 
-    def isStart(self):
+    def isStart(self) -> bool:
         """Returns True if this pathElement starts a subpath"""
+        assert self.position is not None
         return self.position[1] == 0
 
-    def isTiny(self):
+    def isTiny(self) -> bool:
         """
         Returns True if the start and end points of the spline are within
         two em-units in both dimensions
@@ -576,7 +606,7 @@ class pathElement:
         d = (self.e - self.s).abs()
         return d.x < 2 and d.y < 2
 
-    def isShort(self):
+    def isShort(self) -> bool:
         """
         Returns True if the start and end points of the spline are within
         about six em-units
@@ -585,7 +615,7 @@ class pathElement:
         mx, mn = sorted(tuple(d))
         return mx + mn * .336 < 6  # head.c IsShort
 
-    def convertToLine(self):
+    def convertToLine(self) -> None:
         """
         If the pathElement is not already a line, make it one with the same
         start and end points
@@ -600,7 +630,12 @@ class pathElement:
         del self.ce
         self.bounds = None
 
-    def convertToCurve(self, sRatio=.333333, eRatio=None, roundCoords=False):
+    def convertToCurve(
+        self,
+        sRatio: float = .333333,
+        eRatio=None,
+        roundCoords: bool = False
+    ) -> None:
         """
         If the pathElement is not already a curve, make it one. The control
         points are made colinear to preseve the shape. self.cs will be
@@ -616,18 +651,23 @@ class pathElement:
         self.cs = self.s * (1 - sRatio) + self.e * sRatio
         self.ce = self.s * eRatio + self.e * (1 - eRatio)
 
-    def clearHints(self, doVert=False):
+    def clearHints(self, doVert: bool = False) -> None:
         """Clear the vertical or horizontal masks, if any"""
         if doVert and self.masks is not None:
             self.masks = [self.masks[0], None] if self.masks[0] else None
         elif not doVert and self.masks is not None:
             self.masks = [None, self.masks[1]] if self.masks[1] else None
 
-    def cubicParameters(self):
+    def cubicParameters(self) -> tuple[
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+    ]:
         """Returns the fontTools cubic parameters for this pathElement"""
         return calcCubicParameters(self.s, self.cs, self.ce, self.e)
 
-    def getAssocFactor(self, loose=False):
+    def getAssocFactor(self, loose: bool = False):
         if self.is_line:
             l = sqrt(self.s.distsq(self.e))
         else:
@@ -635,7 +675,7 @@ class pathElement:
         return l / (self.assocMatchFactor / 2
                     if loose else self.assocMatchFactor)
 
-    def containsPoint(self, p, factor, returnT=False):
+    def containsPoint(self, p, factor, returnT: bool = False):
         if self.is_line:
             # We sometimes want t anyway, so why not?
             ds = sqrt(self.s.distsq(self.e))
@@ -708,7 +748,7 @@ class pathElement:
             r3 = self.e - self.ce
             return [*r1, *r2, *r3]
 
-    def T2(self, is_start=None):
+    def T2(self, is_start: tuple[pt, Self] | None = None) -> tuple[list, pt]:
         """Returns an array of T2 operators corresponding to the pathElement"""
         prog = []
 
@@ -744,7 +784,7 @@ class pathElement:
 
         return prog, after
 
-    def splitAtInflectionsForSegs(self):
+    def splitAtInflectionsForSegs(self) -> bool:
         a, b, c, d, = self.cubicParameters()
         t2c = 3 * (b[0] * a[1] - a[0] * b[1])
         t1c = 3 * (c[0] * a[1] - a[0] * c[1])
@@ -761,7 +801,7 @@ class pathElement:
             return True
         return False
 
-    def splitAt(self, t):
+    def splitAt(self, t: Number) -> Self:
         if self.is_line:
             pb = self.s + (self.e - self.s) * t
             ret = pathElement(pb, self.e, position=self.position,
@@ -769,7 +809,6 @@ class pathElement:
             self.e = pb
             self.is_close = False
             self.bounds = None
-            return ret
         else:
             s, n = splitCubicAtT(self.s, self.cs, self.ce, self.e, t)
             ptsn = [pt(p) for p in n]
@@ -781,53 +820,61 @@ class pathElement:
             self.e = pt(s[3])
             self.is_close = False
             self.bounds = None
-            return ret
+        # The typing is correct but neither mypy nor pytype handle
+        # self types well yet.
+        return ret  # type: ignore
 
-    def atT(self, t):
+    def atT(self, t: Number) -> pt:
         return pt(segmentPointAtT(self.fonttoolsSegment(), t))
 
-    def fonttoolsSegment(self):
+    def fonttoolsSegment(self) -> list[tuple[Number, Number]]:
         if self.is_line:
-            return [tuple(self.s), tuple(self.e)]
+            return [(self.s[0], self.s[1]),
+                    (self.e[0], self.e[1])]
         else:
-            return [tuple(self.s), tuple(self.cs), tuple(self.ce),
-                    tuple(self.e)]
+            return [
+                (self.s[0], self.s[1]),
+                (self.cs[0], self.cs[1]),
+                (self.ce[0], self.ce[1]),
+                (self.e[0], self.e[1])]
 
 
 class glyphData(BasePen):
     """Stores state corresponding to a T2 CharString"""
-    def __init__(self, roundCoords, name=''):
+
+    def __init__(self, roundCoords: bool, name: str = '') -> None:
         super().__init__()
         self.roundCoords = roundCoords
 
-        self.subpaths = []
-        self.hstems = []
-        self.vstems = []
-        self.startmasks = None
-        self.cntr = []
+        self.subpaths: list[Any] = []
+        self.hstems: list[stem] = []
+        self.vstems: list[stem] = []
+        self.startmasks: list[Any] | None = None
+        self.cntr: list[Any] = []
         self.name = name
-        self.wdth = None
+        self.wdth: int | None = None
 
-        self.is_hm = None
+        self.is_hm: bool | None = None
         self.flex_count = 0
         self.lastcp = None
 
-        self.nextmasks = None
-        self.nextflex = None
+        self.nextmasks: list[Any] | None = None
+        self.nextflex: int | None = None
         self.changed = False
         self.pathEdited = False
-        self.boundsMap = {}
+        self.boundsMap: dict[Any, Any] = {}
 
-        self.hhs = self.vhs = None
+        self.hhs: object | None = None
+        self.vhs: object | None = None
 
     # pen methods:
 
-    def _moveTo(self, ptup):
+    def _moveTo(self, ptup: tuple[int, int]) -> None:
         """moveTo pen method"""
         self.lastcp = None
         self.subpaths.append([])
 
-    def _lineTo(self, ptup):
+    def _lineTo(self, ptup: tuple[int, int]) -> None:
         """lineTo pen method"""
         self.lastcp = None
         curpt = pt(self._getCurrentPoint(), roundCoords=self.roundCoords)
@@ -837,7 +884,12 @@ class glyphData(BasePen):
                                              flex=self.checkFlex(False),
                                              position=self.getPosition()))
 
-    def _curveToOne(self, ptup1, ptup2, ptup3):
+    def _curveToOne(
+        self,
+        ptup1: tuple[int, int],
+        ptup2: tuple[int, int],
+        ptup3: tuple[int, int]
+    ) -> None:
         """lineTo pen method"""
         self.lastcp = None
         curpt = pt(self._getCurrentPoint(), roundCoords=self.roundCoords)
@@ -851,7 +903,7 @@ class glyphData(BasePen):
 
     # closePath is a courtesy of the caller, not an instruction, so
     # we rely on its semantics here
-    def _closePath(self):
+    def _closePath(self) -> None:
         """closePath (courtesy) pen method"""
         curpt = pt(self._getCurrentPoint(), roundCoords=self.roundCoords)
         if len(self.subpaths[-1]) == 0:  # No content after moveTo
@@ -867,17 +919,17 @@ class glyphData(BasePen):
                                              position=self.getPosition()))
         self.lastcp = self.subpaths[-1][-1]
 
-    def getPosition(self):
+    def getPosition(self) -> tuple[int, int]:
         """Returns position (subpath idx, offset) of next spline to be drawn"""
         return (len(self.subpaths) - 1, len(self.subpaths[-1]))
 
     # "hintpen" methods:
-    def nextIsFlex(self):
+    def nextIsFlex(self) -> None:
         """quasi-pen method noting that next spline starts a flex hint"""
         self.flex_count += 1
         self.nextflex = 1
 
-    def hStem(self, data, is_hm):
+    def hStem(self, data, is_hm: bool) -> None:
         """
         quasi-pen method to pass horizontal stem data (in relative format)
         """
@@ -889,7 +941,7 @@ class glyphData(BasePen):
         self.is_hm = is_hm
         self.hstems.extend(self.toStems(data))
 
-    def vStem(self, data, is_hm):
+    def vStem(self, data, is_hm: bool | None) -> None:
         """quasi-pen method passing vertical stem data (in relative format)"""
         if is_hm is not None:
             if self.is_hm is not None and self.is_hm != is_hm:
@@ -900,7 +952,7 @@ class glyphData(BasePen):
             self.is_hm = is_hm
         self.vstems.extend(self.toStems(data))
 
-    def hintmask(self, hhints, vhints):
+    def hintmask(self, hhints, vhints) -> None:
         """quasi-pen method passing hintmask data"""
         if not self.is_hm:
             # XXX Should refactor so this prints as warning when
@@ -927,27 +979,32 @@ class glyphData(BasePen):
             else:
                 self.nextmasks = [hhints, vhints]
 
-    def cntrmask(self, hhints, vhints):
+    def cntrmask(self, hhints, vhints) -> None:
         """quasi-pen method passing cntrmask data"""
         self.cntr.append([hhints, vhints])
 
     # width
-    def setWidth(self, width):
+    def setWidth(self, width: int | None) -> None:
         self.wdth = width
 
-    def getWidth(self):
+    def getWidth(self) -> int | None:
         return self.wdth
 
     # status
-    def isEmpty(self):
+    def isEmpty(self) -> bool:
         """Returns true if there are no subpaths"""
         return not len(self.subpaths) > 0
 
-    def hasFlex(self):
+    def hasFlex(self) -> bool:
         """Returns True if at least one curve pair is flex-hinted"""
         return self.flex_count > 0
 
-    def hasHints(self, doVert=False, both=False, either=False):
+    def hasHints(
+        self,
+        doVert: bool = False,
+        both: bool = False,
+        either: bool = False
+    ) -> bool:
         """
         Returns True if there are hints of the parameter-specified type(s)
         """
@@ -960,7 +1017,7 @@ class glyphData(BasePen):
         else:
             return len(self.hstems) > 0
 
-    def syncPositions(self):
+    def syncPositions(self) -> None:
         """
         Reset the pathElement.position tuples if the path has been edited
         """
@@ -974,7 +1031,7 @@ class glyphData(BasePen):
                             spe.position = (sp, ofst)
                             spe.segment_sub = i
 
-    def setPathEdited(self):
+    def setPathEdited(self) -> None:
         self.pathEdited = True
         self.boundsMap = {}
 
@@ -1001,7 +1058,7 @@ class glyphData(BasePen):
             self.boundsMap[subpath] = b
             return b
 
-    def T2(self, version=1):
+    def T2(self, version: int = 1) -> list[int | str | float | bytes]:
         """Returns an array of T2 operators corresponding to the object"""
         prog = []
 
@@ -1033,7 +1090,7 @@ class glyphData(BasePen):
             prog.append('endchar')
         return prog
 
-    def drawPoints(self, pen, ufoH=None):
+    def drawPoints(self, pen: Any, ufoH: Callable | None = None) -> None:
         """
         Calls pointPen commands on pen to draw the glyph, optionally naming
         some points and building a library of hint annotations
@@ -1051,13 +1108,15 @@ class glyphData(BasePen):
                 wrapi -= 1
                 w = s[wrapi]
             pen.beginPath()
-            wt = 'line' if w.isLine() else "curve"
+            wt = 'line' if w.isLine() else 'curve'
             if doHints:
+                assert ufoH is not None
                 pln, pn = ufoH(w, pln, True)
             pen.addPoint((w.e.x, w.e.y), segmentType=wt, name=pn)
             for i in range(0, wrapi):
                 c = s[i]
                 if doHints:
+                    assert ufoH is not None
                     pln, pn = ufoH(c, pln)
                 if c.isLine():
                     pen.addPoint((c.e.x, c.e.y), segmentType="line", name=pn)
@@ -1067,13 +1126,14 @@ class glyphData(BasePen):
                     pen.addPoint((c.e.x, c.e.y), segmentType="curve")
             if not w.isLine():
                 if doHints:
+                    assert ufoH is not None
                     pln, pn = ufoH(w, pln)
                 pen.addPoint((w.cs.x, w.cs.y), name=pn)
                 pen.addPoint((w.ce.x, w.ce.y))
             pen.endPath()
 
     # XXX deal with or avoid reordering when preserving any hints
-    def reorder(self, neworder):
+    def reorder(self, neworder) -> None:
         """Change the order of subpaths according to neworder"""
         log.debug("Reordering subpaths: %r" % neworder)
         spl = self.subpaths
@@ -1093,7 +1153,7 @@ class glyphData(BasePen):
             return self.subpaths[-1][-1]
         return None
 
-    def next(self, c, segSub=False):
+    def next(self, c, segSub: bool = False):
         """
         If c == self, returns the first elemeht of the path
 
@@ -1214,7 +1274,13 @@ class glyphData(BasePen):
                 return None
         return c
 
-    def nextInSubpath(self, c, skipTiny=False, closeWrapOK=True, segSub=False):
+    def nextInSubpath(
+        self,
+        c,
+        skipTiny: bool = False,
+        closeWrapOK: bool = True,
+        segSub: bool = False
+    ):
         """
         Returns the next element in the subpath after c.
 
@@ -1225,7 +1291,13 @@ class glyphData(BasePen):
         """
         return self.inSubpath(c, 1, skipTiny, closeWrapOK, segSub)
 
-    def prevInSubpath(self, c, skipTiny=False, closeWrapOK=True, segSub=False):
+    def prevInSubpath(
+        self,
+        c,
+        skipTiny: bool = False,
+        closeWrapOK: bool = True,
+        segSub: bool = False
+    ):
         """
         Returns the previous element in the subpath before c.
 
@@ -1248,9 +1320,10 @@ class glyphData(BasePen):
 
     class glyphiter:
         """An iterator for a glyphData path"""
+
         __slots__ = ('gd', 'pos')
 
-        def __init__(self, gd):
+        def __init__(self, gd) -> None:
             self.gd = self.pos = gd
 
         def __next__(self):
@@ -1259,16 +1332,16 @@ class glyphData(BasePen):
                 raise StopIteration
             return self.pos
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator:
             return self
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return self.glyphiter(self)
 
     # utility
 
     def checkAssocPoint(self, segs, spe, ope, sp, op, mapEnd, loose,
-                        factor=None):
+                        factor=None) -> bool:
         if factor is None:
             factor = ope.getAssocFactor(loose)
         if sp == op or ope.containsPoint(sp, factor):
@@ -1298,7 +1371,7 @@ class glyphData(BasePen):
                 return True
         return False
 
-    def associatePath(self, orig, loose=False):
+    def associatePath(self, orig, loose: bool = False) -> None:
         peMap = defaultdict(list)
         for oc in orig:
             peMap[tuple(oc.e.round(1))].append(oc)
@@ -1374,20 +1447,20 @@ class glyphData(BasePen):
             c.association = None
         self.syncPositions()
 
-    def addNullClose(self, si):
+    def addNullClose(self, si) -> None:
         sp = self.subpaths[si]
         assert not sp[-1].isClose()
         pe = pathElement(sp[0].s, sp[0].s, is_close=True,
                          position=(si, len(sp)))
         sp.append(pe)
 
-    def getStemMasks(self):
+    def getStemMasks(self) -> list[Any] | None:
         """Utility function for pen methods"""
         s = self.nextmasks
         self.nextmasks = None
         return s
 
-    def checkFlex(self, is_curve):
+    def checkFlex(self, is_curve: bool):
         """Utility function for pen methods"""
         if self.nextflex is None:
             return None
@@ -1413,7 +1486,7 @@ class glyphData(BasePen):
         for i in range(len(data) // 2):
             low = high + data[i * 2]
             high = low + data[i * 2 + 1]
-            sl.append(stem(low, high))
+            sl.append(stem(low, high))  # pytype: disable=wrong-arg-count
         return sl
 
     def fromStems(self, stems):
@@ -1425,7 +1498,7 @@ class glyphData(BasePen):
             l = s
         return data
 
-    def clearFlex(self):
+    def clearFlex(self) -> None:
         """Clears any flex hints"""
         if self.flex_count == 0:
             return
@@ -1433,7 +1506,7 @@ class glyphData(BasePen):
             c.flex = None
         self.flex_count = 0
 
-    def clearHints(self, doVert=False):
+    def clearHints(self, doVert: bool = False) -> None:
         """Clears stem hints in specified dimension"""
         if doVert:
             self.vstems = []
@@ -1457,7 +1530,7 @@ class glyphData(BasePen):
         for c in self:
             c.clearHints(doVert=doVert)
 
-    def clearTempState(self):
+    def clearTempState(self) -> None:
         self.hhs = self.vhs = None
         for c in self:
             c.clearTempState()

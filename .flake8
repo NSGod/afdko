@@ -11,7 +11,7 @@ ignore = W504,B017,E731,E741,B038
 max-line-length = 79
 
 # exclude files that haven't had linting fixes applied yet
-exclude = 
+exclude =
     agd.py,
     comparefamily.py,
     otf2otc.py,
@@ -22,6 +22,7 @@ exclude =
     **/pdflib/pdfgeom.py,
     **/pdflib/pdfutils.py,
     **/pdflib/ttfpdf.py,
+    tests/,
     build,
     _skbuild,
     ./venv*

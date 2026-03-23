@@ -9,10 +9,22 @@ import os
 import subprocess
 import tempfile
 import zipfile
-
-__version__ = '1.3.7'
+from importlib.metadata import version, PackageNotFoundError
 
 LEN_CID_TOK = 31  # length of string '%!PS-Adobe-3.0 Resource-CIDFont'
+
+__version__ = 'unknown'
+
+
+def fdk_version():
+    global __version__
+    if __version__ != 'unknown':
+        return __version__
+    try:
+        __version__ = version("afdko")
+    except PackageNotFoundError:
+        pass
+    return __version__
 
 
 def validate_path(path_str):
@@ -67,6 +79,8 @@ def get_font_format(font_file_path):
                 return 'TTC'
             elif shorthead == b'\x01\x00':
                 return 'CFF'
+            elif shorthead == b'\x02\x00':
+                return 'CFF2'
             elif shorthead == b'\x80\x01':
                 return 'PFB'
             elif head in (b'%!PS', b'%!Fo'):
@@ -175,6 +189,7 @@ def runShellCmdLogging(cmd, shell=True):
         proc = subprocess.Popen(cmd, shell=shell, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         while 1:
+            assert proc.stdout
             output = proc.stdout.readline().rstrip()
             if output:
                 print(output.decode('utf-8', 'backslashreplace'))

@@ -1,0 +1,4 @@
+# Test file for missing include error reporting
+feature test {
+    include(nonexistent_file.fea);
+} test;

@@ -1,0 +1,50 @@
+# Test: Variable mark positioning - multiple formats
+# Level: 2 (value constructs)
+# Depends: 00_foundation/locationDef_basic.fea (location definitions)
+# Tests: Different syntax forms for variable anchor positioning
+
+languagesystem DFLT dflt;
+
+# Mark classes with variable anchors
+# Format 1: Simple variable anchor on mark (combining acute)
+# Mark anchor x varies: 250→240→260
+markClass uni0301 <anchor (250 wght=200u:240 wght=900u:260) 620> @TOP_MARKS;
+
+# Format 2: Mark with both x and y varying
+# Mark x varies: 250→245→255, y constant at 600
+markClass uni0300 <anchor (250 wght=200u:245 wght=900u:255)
+                           600> @TOP_MARKS_XY;
+
+# Format 3: Mark with four-value anchor (angle brackets inside)
+# Mark x varies: 250→245→255, y varies: 620→615→625
+markClass uni0308 <anchor (<250 620> wght=200u:<245 615> wght=900u:<255 625>)> @TOP_MARKS_FULL;
+
+feature mark {
+    # Test 1: Variable base anchor (A with acute)
+    # Base anchor x-coordinate varies MORE than mark: 300→280→320
+    # Expected offset: (300-250)→(280-240)→(320-260) = 50→40→60
+    pos base A <anchor (300 wght=200u:280 wght=900u:320) 700> mark @TOP_MARKS;
+
+    # Test 2: Both mark and base anchors vary (a with grave)
+    # Base x: 280→270→290, Mark x: 250→245→255
+    # Expected x offset: 30→25→35
+    # Base y: 550→540→560, Mark y: 600 (constant)
+    # Expected y offset: -50→-60→-40
+    pos base a <anchor (280 wght=200u:270 wght=900u:290)
+                       (550 wght=200u:540 wght=900u:560)> mark @TOP_MARKS_XY;
+
+    # Test 3: Base with four-value anchor (b with dieresis)
+    # Base x: 300→290→310, Mark x: 250→245→255
+    # Expected x offset: 50→45→55
+    # Base y: 700→695→705, Mark y: 620→615→625
+    # Expected y offset: 80→80→80 (same delta)
+    pos base b <anchor (<300 700> wght=200u:<290 695> wght=900u:<310 705>)> mark @TOP_MARKS_FULL;
+
+    # Test 4: Two axes - anchor varies with both wght and opsz (c with acute)
+    # Base varies at four corners, mark from @TOP_MARKS varies only with wght
+    # Testing bilinear interpolation with independent variation
+    pos base c <anchor (290 wght=200u,opsz=8u:275 wght=200u,opsz=60u:280
+                            wght=900u,opsz=8u:315 wght=900u,opsz=60u:310)
+                       (700 wght=200u,opsz=8u:690 wght=200u,opsz=60u:710
+                            wght=900u,opsz=8u:690 wght=900u,opsz=60u:710)> mark @TOP_MARKS;
+} mark;

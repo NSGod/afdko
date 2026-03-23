@@ -1,0 +1,12 @@
+# Test file for missing semicolon error reporting
+languagesystem DFLT dflt;
+
+@LOWERCASE = [a b c d e f];
+
+# Missing semicolon on next line (line 7)
+@UPPERCASE = [A B C D E F]
+@NUMBERS = [zero one two three];
+
+feature test {
+    substitute @LOWERCASE by @UPPERCASE;
+} test;

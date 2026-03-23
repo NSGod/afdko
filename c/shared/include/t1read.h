@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef T1READ_H
-#define T1READ_H
+#ifndef SHARED_INCLUDE_T1READ_H_
+#define SHARED_INCLUDE_T1READ_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define T1R_VERSION CTL_MAKE_VERSION(1, 0, 45)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Type 1 (PostScript) Font Parser Library
    =======================================
@@ -40,7 +39,7 @@ extern "C" {
 
 typedef struct t1rCtx_ *t1rCtx;
 t1rCtx t1rNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define T1R_CHECK_ARGS CTL_CHECK_ARGS_CALL(T1R_VERSION)
 
@@ -135,7 +134,7 @@ int t1rIterateGlyphs(t1rCtx h, abfGlyphCallbacks *glyph_cb);
 int t1rGetGlyphByTag(t1rCtx h,
                      unsigned short tag, abfGlyphCallbacks *glyph_cb);
 int t1rGetGlyphByName(t1rCtx h,
-                      char *gname, abfGlyphCallbacks *glyph_cb);
+                      const char *gname, abfGlyphCallbacks *glyph_cb);
 int t1rGetGlyphByCID(t1rCtx h,
                      unsigned short cid, abfGlyphCallbacks *glyph_cb);
 
@@ -213,7 +212,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from t1rerr.h. */
 
-char *t1rErrStr(int err_code);
+const char *t1rErrStr(int err_code);
 
 /* t1rErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -223,8 +222,4 @@ void t1rGetVersion(ctlVersionCallbacks *cb);
 /* t1rGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* T1READ_H */
+#endif  // SHARED_INCLUDE_T1READ_H_

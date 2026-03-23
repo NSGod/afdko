@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ttFont sfntVersion="OTTO" ttLibVersion="3.28">
+<ttFont sfntVersion="OTTO" ttLibVersion="4.56">
 
   <GlyphOrder>
     <!-- The 'id' attribute is only for humans; it is ignored when parsed. -->
@@ -12,12 +12,12 @@
     <!-- Most of this table will be recalculated by the compiler -->
     <tableVersion value="1.0"/>
     <fontRevision value="1.0"/>
-    <checkSumAdjustment value="0xd660757b"/>
+    <checkSumAdjustment value="0x54c1973f"/>
     <magicNumber value="0x5f0f3cf5"/>
     <flags value="00000000 00000011"/>
     <unitsPerEm value="1000"/>
-    <created value="Sat Jun 30 16:32:33 2018"/>
-    <modified value="Sat Jun 30 16:32:33 2018"/>
+    <created value="Wed Jan 14 10:58:14 2026"/>
+    <modified value="Wed Jan 14 10:58:14 2026"/>
     <xMin value="52"/>
     <yMin value="-12"/>
     <xMax value="565"/>
@@ -121,7 +121,7 @@
       Source Sans
     </namerecord>
     <namerecord nameID="5" platformID="1" platEncID="0" langID="0x0" unicode="True">
-      Version 1.000;hotconv 1.0.108;makeotfexe 2.5.65593
+      Version 1.000;addfeatures 5.0.0b22.dev0+g294077325.d20260114
     </namerecord>
     <namerecord nameID="6" platformID="1" platEncID="0" langID="0x0" unicode="True">
       SourceSans-Test
@@ -139,7 +139,7 @@
       Source Sans
     </namerecord>
     <namerecord nameID="5" platformID="3" platEncID="1" langID="0x409">
-      Version 1.000;hotconv 1.0.108;makeotfexe 2.5.65593
+      Version 1.000;addfeatures 5.0.0b22.dev0+g294077325.d20260114
     </namerecord>
     <namerecord nameID="6" platformID="3" platEncID="1" langID="0x409">
       SourceSans-Test
@@ -212,20 +212,23 @@
       <CharStrings>
         <CharString name=".notdef">
           653 89 hmoveto
-          476 660 -476 hlineto
-          108 -602 rmoveto
+          476 660 -476 -660 hlineto
+          108 58 rmoveto
           74 132 54 103 rlineto
           4 hlineto
           52 -103 73 -132 rlineto
-          -129 329 rmoveto
+          -257 hlineto
+          128 329 rmoveto
           -50 94 -66 119 rlineto
           235 hlineto
           -66 -119 -49 -94 rlineto
-          -175 -277 rmoveto
+          -4 hlineto
+          -171 -277 rmoveto
           462 vlineto
-          127 -232 rlineto
-          217 -230 rmoveto
+          127 -232 -127 -230 rlineto
+          344 hmoveto
           -126 230 126 232 rlineto
+          -462 vlineto
           endchar
         </CharString>
         <CharString name="a">
@@ -247,7 +250,7 @@
           endchar
         </CharString>
         <CharString name="negative">
-          0 endchar
+          endchar
         </CharString>
       </CharStrings>
     </CFFFont>

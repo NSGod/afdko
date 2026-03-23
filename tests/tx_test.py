@@ -17,8 +17,16 @@ from test_utils import (
 from runner import main as runner
 from differ import main as differ, SPLIT_MARKER
 
+# Tests use the unified 'afdko' invoker by default for the primary test path.
+# This reflects real-world usage where users run 'afdko tx ...' commands.
+# A small backwards compatibility test at the end verifies wrappers still work.
 TOOL = 'tx'
 CMD = ['-t', TOOL]
+
+
+def _tool_cmd(*args):
+    """Helper to construct command using unified invoker."""
+    return ['afdko', TOOL] + list(args)
 
 
 def _get_extension(in_format):
@@ -65,12 +73,12 @@ PFA_SKIP = [
 
 @pytest.mark.parametrize('arg', ['-h', '-v', '-u'])
 def test_exit_known_option(arg):
-    assert subprocess.call([TOOL, arg]) == 0
+    assert subprocess.call(_tool_cmd(arg)) == 0
 
 
 @pytest.mark.parametrize('arg', ['-bar', '-foo'])
 def test_exit_unknown_option(arg):
-    assert subprocess.call([TOOL, arg]) == 1
+    assert subprocess.call(_tool_cmd(arg)) == 1
 
 
 @pytest.mark.parametrize('pth', [
@@ -79,7 +87,7 @@ def test_exit_unknown_option(arg):
     [get_input_path('type1.pfa'), 'a', 'b'],  # too many file args
 ])
 def test_exit_invalid_path_or_font(pth):
-    assert subprocess.call([TOOL] + pth) == 1
+    assert subprocess.call(_tool_cmd(*pth)) == 1
 
 
 # -------------
@@ -97,7 +105,7 @@ def test_exit_invalid_path_or_font(pth):
 ])
 def test_option_error_type1_input(args):
     font_path = get_input_path('type1.pfa')
-    assert subprocess.call([TOOL] + args + [font_path]) == 1
+    assert subprocess.call(_tool_cmd(*args, font_path)) == 1
 
 
 @pytest.mark.parametrize('arg', ['-e', '-q', '+q', '-w', '+w', '-lf', '-cr',
@@ -105,7 +113,7 @@ def test_option_error_type1_input(args):
 def test_option_error_type1_clash(arg):
     # options -pfb or -LWFN may not be used with other options
     pfb = '-pfb' if arg != '-pfb' else '-LWFN'
-    assert subprocess.call([TOOL, '-t1', pfb, arg]) == 1
+    assert subprocess.call(_tool_cmd('-t1', pfb, arg)) == 1
 
 
 @pytest.mark.parametrize('args', [
@@ -125,7 +133,7 @@ def test_option_error_type1_clash(arg):
     ['-dump', '-Z'], ['-dump', '+Z'],
 ])
 def test_option_error_wrong_mode(args):
-    assert subprocess.call([TOOL] + args) == 1
+    assert subprocess.call(_tool_cmd(*args)) == 1
 
 
 @pytest.mark.parametrize('arg', [
@@ -151,19 +159,19 @@ def test_option_error_bad_arg(args):
 @pytest.mark.parametrize('arg2', ['-sd', '-sr', '-dd'])
 @pytest.mark.parametrize('arg1', ['-a', '-f', '-A'])
 def test_option_error_no_args_left2(arg1, arg2):
-    assert subprocess.call([TOOL, '-t1', arg1, arg2]) == 1
+    assert subprocess.call(_tool_cmd('-t1', arg1, arg2)) == 1
 
 
 @pytest.mark.parametrize('arg2', ['-sd', '-sr', '-dd'])
 @pytest.mark.parametrize('arg1', ['-a', '-f'])
 def test_option_error_empty_list(arg1, arg2):
     empty_dir = get_temp_dir_path()
-    assert subprocess.call([TOOL, '-t1', arg1, arg2, empty_dir]) == 1
+    assert subprocess.call(_tool_cmd('-t1', arg1, arg2, empty_dir)) == 1
 
 
 @pytest.mark.parametrize('arg', ['-bc', '-z', '-cmp', '-sha1'])
 def test_gone_options_bc(arg):
-    assert subprocess.call([TOOL, arg]) == 1
+    assert subprocess.call(_tool_cmd(arg)) == 1
 
 
 @pytest.mark.parametrize('mode, msg', [
@@ -171,8 +179,9 @@ def test_gone_options_bc(arg):
     ('-u', b'tx {[mode][mode options][shared options][files]}*'),
     ('-afm', b'[-afm options: default none]'),
     ('-cef', b'[-cef options: default none]'),
-    ('-cff', b'[-cff options: defaults -E, -F, -O, -S, +T, -V, -Z, -b, -d]'),
-    ('-cff2', b'[-cff2 options: defaults -S, -b]'),
+    ('-cff', b'[-cff options: defaults ' +
+             b'-E, +F, -O, -S, +T, -V, -Z, -b, +W, -d, +H]'),
+    ('-cff2', b'[-cff2 options: defaults -S, -b, +H]'),
     ('-dcf', b'[-dcf options: defaults -T all, -5]'),
     ('-dump', b'[-dump options: default -1]'),
     ('-mtx', b'[-mtx options: default -0]'),
@@ -204,7 +213,7 @@ def test_script_file(dcf_dump_level):
 def test_nested_script():
     # nested scripts not allowed
     temp_path = get_temp_file_path()
-    assert subprocess.call([TOOL, '-s', 'foobar', '-s', temp_path]) == 1
+    assert subprocess.call(_tool_cmd('-s', 'foobar', '-s', temp_path)) == 1
 
 
 @pytest.mark.parametrize('layer_name', ['', 'None', 'background', 'foobar'])
@@ -228,7 +237,7 @@ def test_a_options(arg, filename):
     input_path = get_input_path('ufo3.ufo')
     output_path = os.path.join(os.getcwd(), filename)
     assert os.path.exists(output_path) is False
-    subprocess.call([TOOL, '-t1', arg, input_path])
+    subprocess.call(_tool_cmd('-t1', arg, input_path))
     assert os.path.exists(output_path) is True
     os.remove(output_path)
 
@@ -237,7 +246,7 @@ def test_o_option():
     input_path = get_input_path('ufo3.ufo')
     expected_path = get_expected_path('ufo3.pfa')
     output_path = get_temp_file_path()
-    subprocess.call([TOOL, '-t1', '-o', output_path, input_path])
+    subprocess.call(_tool_cmd('-t1', '-o', output_path, input_path))
     assert differ([expected_path, output_path, '-s', PFA_SKIP[0]])
 
 
@@ -265,14 +274,14 @@ def test_stdin():
 def test_m_option_success(arg):
     # mem_manage() is called 16 times with the command 'tx -m 0 type1.pfa'
     input_path = get_input_path('type1.pfa')
-    assert subprocess.call([TOOL, '-m', arg, input_path]) == 0
+    assert subprocess.call(_tool_cmd('-m', arg, input_path)) == 0
 
 
 # Disabled because of https://github.com/adobe-type-tools/afdko/issues/933
 # @pytest.mark.parametrize('arg', range(1, 16))
 # def test_m_option_fail(arg):
 #     input_path = get_input_path('type1.pfa')
-#     assert subprocess.call([TOOL, '-m', f'-{arg}', input_path]) != 0
+#     assert subprocess.call(_tool_cmd('-m', f'-{arg}', input_path)) != 0
 
 
 @pytest.mark.parametrize('arg, exp_filename', [(None, 'not_removed'),
@@ -451,23 +460,23 @@ def test_dump_flex_op(fext):
 
 @pytest.mark.parametrize('filename, msg', [
     ('avar_invalid_table_version',
-        b'(cfr) invalid avar table version'),
+        b'invalid avar table version'),
     ('fvar_invalid_table_version',
-        b'(cfr) invalid fvar table version'),
+        b'invalid fvar table version'),
     ('avar_invalid_table_size',
-        b'(cfr) invalid avar table size'),
+        b'invalid avar table size'),
     ('fvar_invalid_table_size',
-        b'(cfr) invalid fvar table size'),
+        b'invalid fvar table size'),
     ('fvar_invalid_table_header',
-        b'(cfr) invalid values in fvar table header'),
+        b'invalid values in fvar table header'),
     ('avar_invalid_axis-instance_count-size',
-        b'(cfr) invalid avar table size or axis/instance count/size'),
+        b'invalid avar table size or axis/instance count/size'),
     ('fvar_invalid_axis-instance_count-size',
-        b'(cfr) invalid fvar table size or axis/instance count/size'),
+        b'invalid fvar table size or axis/instance count/size'),
     ('avar_axis_value_map_out_of_bounds',
-        b'(cfr) avar axis value map out of bounds'),
+        b'avar axis value map out of bounds'),
     ('avar_fvar_axis_mismatch',
-        b'(cfr) mismatching axis counts in fvar and avar'),
+        b'mismatching axis counts in fvar and avar'),
 ])
 def test_varread_errors(filename, msg):
     font_path = get_bad_input_path(f'vf_{filename}.otf')
@@ -591,7 +600,7 @@ def test_long_charstring_warning():
     # expected_path = get_expected_path('CJK-VarTest_warn.txt')
     with open(actual_path, 'rb') as f:
         output = f.read()
-    assert b"(cfr) Warning: CharString of GID 1 is 71057 bytes long" in output
+    assert b"CharString of GID 1 is 71057 bytes long" in output
 
 
 def test_long_charstring_write():
@@ -1107,9 +1116,11 @@ def test_cffread_bug1343():
     ('ufo', 'cidfont.subset', 'cidfont_subset.ufo', 'testCID.ufo'),
     ('t1', 'testCID.ufo', 'cidfont_subset.ufo', 'cidfont.subset'),
     (('ufo', 't1'), 'cidfont.subset', 'cidfont_subset.ufo', 'cidfont.subset'),
-    (('t1', 'ufo'), 'testCID.ufo', 'cidfont_subset.ufo', 'testCID.ufo'),
+    (('t1', 'ufo'), 'testCID.ufo', 'cidfont_subset.ufo', 'testCID-roundtrip.ufo'),
     (('t1', 'ufo'), 'groups-100-fdselect.ufo', 'groups-100-fdselect.ufo',
      'groups-100-fdselect.ufo'),
+    (('t1', 'ufo'), 'testCID-noFDSelect.ufo', 'testCID-noFDSelect.ufo',
+     'testCID-noFDSelect.ufo'),
 ])
 def test_cidkeyed_read_write(arg, input, output, expected):
     """
@@ -1119,6 +1130,7 @@ def test_cidkeyed_read_write(arg, input, output, expected):
     CID -> UFO -> CID (round-trip test)
     UFO -> CID -> UFO (round-trip test)
     UFO -> CID -> UFO (round-trip test with 100 FDArrays)
+    UFO -> CID -> UFO (round-trip test with no FDSelect)
     """
     folder = "cid_roundtrip/"
     input_path = get_input_path(folder + input)
@@ -1177,7 +1189,7 @@ def test_lib_removes_outlines_bug1366():
     input_path = get_input_path("bug1366.ufo")
     expected_path = get_expected_path("bug1366.pfb")
     output_path = get_temp_file_path()
-    subprocess.call([TOOL, '-t1', '-o', output_path, input_path])
+    subprocess.call(_tool_cmd('-t1', '-o', output_path, input_path))
     expected_path = generate_ps_dump(expected_path)
     output_path = generate_ps_dump(output_path)
     assert differ([expected_path, output_path, '-s', PFA_SKIP[0]])
@@ -1230,7 +1242,7 @@ def test_non_FDArray_dict_parse():
     assert subprocess.call(arg) == 0
 
 
-garbage_unitsPerEm = (b"tx: (ufr) In fontinfo.plist: encountered unparseable"
+garbage_unitsPerEm = (b"In fontinfo.plist: encountered unparseable"
                       b" number for UnitsPerEmgarbage")
 
 
@@ -1249,7 +1261,7 @@ garbage_unitsPerEm = (b"tx: (ufr) In fontinfo.plist: encountered unparseable"
     ("empty-dict", b'', 0),
     ("version-minor-only", b'', 0),
     ("version-major-dup", b'', 0),
-    ("missing-fontinfoplist", b"Warning: Unable to open fontinfo.plist in" +
+    ("missing-fontinfoplist", b"Unable to open fontinfo.plist in" +
                               b" source UFO font. No PostScript FontDict " +
                               b"values are specified.", 5),
     ("missing-width-attr", b"", 0),
@@ -1299,7 +1311,7 @@ def test_unknown_fontinfoplist_key_bug1396():
     assert subprocess.call(arg) == 0
 
 
-libplist_warn = (b"tx: (ufr) Warning: Unable to open "
+libplist_warn = (b"Unable to open "
                  b"lib.plist in source UFO font.")
 
 
@@ -1331,20 +1343,20 @@ def test_missing_ufo_libplist_bug1306(file, msg, ret_code):
             msg = expected_msg.read()
     assert msg in output
 
-    assert subprocess.call([TOOL, '-t1', '-f', input_path]) == ret_code
+    assert subprocess.call(_tool_cmd('-t1', '-f', input_path)) == ret_code
 
 
-glyphorder_warn = (b'tx: (ufr) Warning: public.glyphOrder key is empty'
+glyphorder_warn = (b'public.glyphOrder key is empty'
                    b' and does not contain glyph name for all 5 glyphs.'
                    b' Consider defining this in lib.plist.')
 
-glyphorder_dup_warn = (b"(ufr) Warning: glyph order contains duplicate" +
+glyphorder_dup_warn = (b"Glyph order contains duplicate" +
                        b" entries for glyphs 'a'.")
 
-missing_cidmap_fail = (b"tx: (t1w) bad font dictionary. Name-keyed UFO has "
+missing_cidmap_fail = (b" bad font dictionary. Name-keyed UFO has "
                        b"more than 1 defined FDArray.")
 
-unparseable_cid_digit = (b"tx: (ufr) In lib.plist postscriptCIDMap, expected "
+unparseable_cid_digit = (b"In lib.plist postscriptCIDMap, expected "
                          b"cid number but could not find parseable number for "
                          b"glyph: cid00000")
 
@@ -1385,19 +1397,19 @@ def test_ufo_libplist_parsing(file, msg, ret_code, exp_file):
         assert subprocess.call(arg) == ret_code
 
 
-ros_reg_fail = (b"tx: (ufr) Empty Registry value for com.adobe.type.ROS key"
+ros_reg_fail = (b"Empty Registry value for com.adobe.type.ROS key"
                 b". ROS value format should be: registry-ordering-supplement")
 
 
-ros_ord_fail = (b"tx: (ufr) Empty Ordering value for com.adobe.type.ROS key"
+ros_ord_fail = (b"Empty Ordering value for com.adobe.type.ROS key"
                 b". ROS value format should be: registry-ordering-supplement")
 
 
-ros_supp_fail = (b"tx: (ufr) Empty Supplement value for com.adobe.type.ROS key"
+ros_supp_fail = (b"Empty Supplement value for com.adobe.type.ROS key"
                  b". ROS value format should be: registry-ordering-supplement")
 
 
-ros_fail = (b"tx: (t1w) bad font dictionary. Missing either the CID font name,"
+ros_fail = (b"bad font dictionary. Missing either the CID font name,"
             b" or the Registry-Order-Supplement names.")
 
 
@@ -1422,7 +1434,7 @@ def test_ufo_ROS_parsing(file, msg, ret_code):
     assert subprocess.call(arg) == ret_code
 
 
-mismatched_fdarray_fdselect_msg = (b"tx: (ufr) In groups.plist: FDict "
+mismatched_fdarray_fdselect_msg = (b"In groups.plist: FDict "
                                    b"referenced in FDSelect Group FDArraySel"
                                    b"ect.1.SourceHanSans-Heavy-Ideographs is "
                                    b"not defined at expected FDArray index 1.")
@@ -1462,7 +1474,7 @@ def test_ufo_underline_writing_bug1534():
     assert differ([expected_path, output_path])
 
 
-glyph_not_in_dflt_warn = (b"tx: (ufr) Warning: glyph 'foo' is"
+glyph_not_in_dflt_warn = (b"Glyph 'foo' is"
                           b" in the processed layer but not in"
                           b" the default layer.")
 
@@ -1505,7 +1517,7 @@ def test_ufo_contentsplist_parsing(file, msg, ret_code):
     ("empty-flexlist", b'', 0),
     ("empty-stems", b'', 0),
     ("empty-stems-2", b'', 0),
-    ("missing-glif", b'tx: (ufr) Failed to open the ' +
+    ("missing-glif", b'Failed to open the ' +
                      b'glyphs/missing.glif glif file.', 3),
     ("one-stem-hstem", b'', 0),
     ("one-stem-hstem3", b'', 0),
@@ -1514,10 +1526,10 @@ def test_ufo_contentsplist_parsing(file, msg, ret_code):
     ("wrong-type-stem-hstem", b'', 0),
     ("overlaps-cidkeyed", b'', 0),
     ("overlaps-namekeyed", b'', 0),
-    ("overlaps-cidkeyed-missing-cid", b"glyph 'cid45107' missing" +
+    ("overlaps-cidkeyed-missing-cid", b"Glyph 'cid45107' missing" +
                                       b" CID number in <lib> dict", 6),
     ("dup-glif", b'', 0),
-    ("missing-cid-value", b"glyph 'cid45107' missing CID" +
+    ("missing-cid-value", b"Glyph 'cid45107' missing CID" +
                           b" number in <lib> dict", 6),
     ("missing-advance", b'', 0),
     ("missing-autohint", b'', 0),
@@ -1529,19 +1541,19 @@ def test_ufo_contentsplist_parsing(file, msg, ret_code):
     ("missing-stems", b'', 0),
     ("missing-width2", b'', 0),
     ("missing-flexlist", b'', 0),
-    ("FDArraySelect.17.VKana_subset", b"glyph 'monkey' missing" +
+    ("FDArraySelect.17.VKana_subset", b"Glyph 'monkey' missing" +
                                       b" CID number in <lib> dict", 6),
     ("qcurve-glyph",
-     b"tx: (ufr) Encountered unsupported point type 'qcurve' in " +
+     b"Encountered unsupported point type 'qcurve' in " +
      b"glyph 'oops'.", 6),
     ("null-filepath-glyph",
-     b"tx: (ufr) Encountered glyph reference 'oops' " +
+     b"Encountered glyph reference 'oops' " +
      b"in contents.plist with an empty file path.", 6),
     ("null-filepath-cid",
-     b"tx: (ufr) Encountered glyph reference 'cid00000' in " +
+     b"Encountered glyph reference 'cid00000' in " +
      b"contents.plist with an empty file path.", 6),
     ("null-component-filepath",
-     b"tx: (ufr) Encountered glyph component reference " +
+     b"Encountered glyph component reference " +
      b"'glyphs/C_acute.glif' with an empty file path.", 1)
 ])
 def test_ufo_glifs_parsing(file, msg, ret_code):
@@ -1568,22 +1580,22 @@ def test_fontmatrix_unitsperem():
     input_path = get_input_path("fontmatrix-unitsperem.ufo")
     expected_path = get_expected_path("fontmatrix-unitsperem.pfa")
     output_path = get_temp_file_path()
-    subprocess.call([TOOL, '-t1', '-o', output_path, input_path])
+    subprocess.call(_tool_cmd('-t1', '-o', output_path, input_path))
     assert differ([expected_path, output_path, '-s', PFA_SKIP[0]])
 
 
-missing_iFD = (b"tx: (ufr) glyph 'cid17899' missing "
+missing_iFD = (b"Glyph 'cid17899' missing "
                b"FDArray index in <lib> dict")
 
-missing_FDArraySelect = (b"Warning: FDArraySelect not defined for "
+missing_FDArraySelect = (b"FDArraySelect not defined for "
                          b"cid-keyed font")
 
 
-fdselect_doesnt_exist_fail = (b"tx: (ufr) In groups.plist: FDict referenced in"
+fdselect_doesnt_exist_fail = (b"In groups.plist: FDict referenced in"
                               b" FDSelect Group FDArraySelect.2.DoesNotExist "
                               b"is not defined at expected FDArray index 2")
 
-unparseable_index = (b"tx: (ufr) In groups.plist: expected FDArray index "
+unparseable_index = (b"In groups.plist: expected FDArray index "
                      b"number but could not find parseable number in "
                      b"FDArraySelect group: FDArraySelect.not-parseable."
                      b"SourceHanSans-Heavy-Generic")
@@ -1636,8 +1648,8 @@ def test_ufo_decid_fdarray_memleak():
     input_path = get_input_path("cidkeyed-with-multiple-fdicts.ufo")
     expected_path = get_expected_path("cidkeyed-with-multiple-fdicts.pfa")
     output_path = get_temp_file_path()
-    retCode = subprocess.call([TOOL, '-t1', '-decid', '-fd', '1', '-o',
-                               output_path, input_path])
+    retCode = subprocess.call(_tool_cmd('-t1', '-decid', '-fd', '1', '-o',
+                               output_path, input_path))
     expected_path = generate_ps_dump(expected_path)
     output_path = generate_ps_dump(output_path)
     assert (retCode == 0)
@@ -1654,7 +1666,7 @@ def test_bug1641_wrong_glyphorder():
     input_path = get_input_path("namekeyed-with-alt-layer.ufo")
     expected_path = get_expected_path("namekeyed-with-alt-layer.pfb")
     output_path = get_temp_file_path()
-    subprocess.call([TOOL, '-t1', '-o', output_path, input_path])
+    subprocess.call(_tool_cmd('-t1', '-o', output_path, input_path))
     expected_path = generate_ps_dump(expected_path)
     output_path = generate_ps_dump(output_path)
     assert differ([expected_path, output_path, '-s', PFA_SKIP[0]])
@@ -1664,7 +1676,7 @@ def test_alt_missing_glyph():
     """
     Test case where alt layer has a glyph that default layer doesn't.
     """
-    msg = (b"tx: (ufr) Warning: glyph 'B' is in the processed layer"
+    msg = (b"Glyph 'B' is in the processed layer"
            b" but not in the default layer.")
     input_path = get_input_path("alt-missing-glif.ufo")
     expected_path = get_expected_path("alt-missing-glif.pfb")
@@ -1687,7 +1699,68 @@ def test_parsing_attrs_bug1673():
     input_path = get_input_path("ufo-advance-height-weight.ufo")
     expected_path = get_expected_path("ufo-advance-height-weight.pfa")
     output_path = get_temp_file_path()
-    subprocess.call([TOOL, '-t1', '-o', output_path, input_path])
+    subprocess.call(_tool_cmd('-t1', '-o', output_path, input_path))
     expected_path = generate_ps_dump(expected_path)
     output_path = generate_ps_dump(output_path)
     assert differ([expected_path, output_path, '-s', PFA_SKIP[0]])
+
+
+def test_ufo_version_zero_major_bug1769():
+    """Test that versionMajor=0 is correctly written to UFO (issue #1769)."""
+    import xml.etree.ElementTree as ET
+
+    input_path = get_input_path('version_zero.pfa')
+    output_path = get_temp_dir_path('version_zero.ufo')
+    subprocess.call(_tool_cmd('-ufo', '-o', output_path, input_path))
+
+    # Parse fontinfo.plist
+    fontinfo_path = os.path.join(output_path, 'fontinfo.plist')
+    tree = ET.parse(fontinfo_path)
+    root = tree.getroot()
+
+    # Find versionMajor and versionMinor values
+    # In a plist, keys and values alternate in the dict element
+    dict_elem = root.find('.//dict')
+    keys = [elem.text for elem in dict_elem.findall('key')]
+    values = [elem for elem in dict_elem if elem.tag != 'key']
+
+    version_major_idx = keys.index('versionMajor')
+    version_minor_idx = keys.index('versionMinor')
+
+    major_value = values[version_major_idx].text
+    minor_value = values[version_minor_idx].text
+
+    # Verify versionMajor is '0', not empty
+    assert major_value == '0', f"versionMajor should be '0', got '{major_value}'"
+    assert minor_value == '500', f"versionMinor should be '500', got '{minor_value}'"
+
+
+# ---------------------------------
+# Backwards Compatibility Tests
+# ---------------------------------
+# Minimal tests to verify wrapper scripts still work.
+# Main tests above use the invoker (the norm).
+
+class TestWrapperBackwardsCompatibility:
+    """Verify that the tx wrapper script still works for backwards compatibility."""
+
+    @pytest.mark.parametrize('arg', ['-h', '-v'])
+    def test_wrapper_help(self, arg):
+        """Wrapper script handles basic options."""
+        assert subprocess.call([TOOL, arg]) == 0
+
+    def test_wrapper_runs_same_code(self):
+        """Wrapper and invoker produce identical output."""
+        input_path = get_input_path('type1.pfa')
+        
+        # Run via invoker
+        inv_result = subprocess.run(_tool_cmd('-dump', input_path),
+                                    capture_output=True, text=True)
+        
+        # Run via wrapper
+        wrap_result = subprocess.run([TOOL, '-dump', input_path],
+                                     capture_output=True, text=True)
+        
+        # Should produce identical output
+        assert inv_result.returncode == wrap_result.returncode
+        assert inv_result.stdout == wrap_result.stdout

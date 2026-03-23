@@ -1,7 +1,8 @@
 ##### • [Adobe Font Development Kit for OpenType (AFDKO) Overview](./AFDKO-Overview.md)
 ##### • [OpenType Feature File Specification](./OpenTypeFeatureFileSpecification.md)
+##### • [Guide to Variable Features](./Variable_Feature_Guide.md)
 ---
-##### • [MakeOTF v2.5 User Guide](./MakeOTFUserGuide.md)
+##### • [MakeOTF User Guide](./MakeOTFUserGuide.md)
 ##### • [Command Line How-To](./CommandLineHowTo.md)
 ##### • [CID-keyed UFO Guide](./CIDKeyedUFOGuide.md)
 ---
@@ -11,3 +12,6 @@
 ---
 ##### • [FDK Build Notes](./FDK_Build_Notes.md)
 ##### • [MakeOTFEXE Feature File Parser Notes](./Feature_Parser_Notes.md)
+##### • [Support of CFF2 in AFDKO](./CFF2_Support.md)
+##### • [C/C++ Architectural Changes (v5.0)](./C_CPP_Changes.md)
+##### • [Deprecation System Implementation (v5.0)](./Deprecation_System.md)

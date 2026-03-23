@@ -12,6 +12,11 @@ Adobe Font Development Kit for OpenType (AFDKO)
 The AFDKO is a set of tools for building OpenType font files from
 PostScript and TrueType font data.
 
+Note: This version of the toolkit has been restructured and what was C code has been
+partially ported to C++. For now these changes are considered experimental and
+there may be significant bugs. However, the new code can do more or less what
+the older code did and passes our test suite.
+
 This repository contains the data files, Python scripts, and sources for
 the command line programs that comprise the AFDKO. The project uses the
 [Apache 2.0 Open Source license](https://opensource.org/licenses/Apache-2.0).
@@ -34,6 +39,34 @@ projects.
 **The Python port of psautohint was (re)integrated into the AFDKO repository as "otfautohint"**
 
 More information can be found in [docs/otfautohint_Notes.md](docs/otfautohint_Notes.md)
+
+**AFDKO now provides a unified command interface**
+
+All AFDKO tools are now accessed through the `afdko` command:
+
+```sh
+afdko <command> [options]
+```
+
+For example:
+```sh
+afdko makeotf -r
+afdko tx -dump font.otf
+afdko spot -Proof font.otf
+```
+
+The individual command wrappers (e.g., `makeotf`, `tx`, `spot`) are deprecated and will be removed in a future release. By default, these wrappers continue to work silently. To see deprecation warnings, set:
+
+```sh
+export AFDKO_WRAPPER_MODE=warn
+```
+
+For more details on the deprecation system and migration timeline, see [docs/Deprecation_System.md](docs/Deprecation_System.md).
+
+To see all available commands:
+```sh
+afdko --help
+```
 
 Installation
 ------------
@@ -138,7 +171,7 @@ On Linux (Ubuntu 17.10 LTS or later), install these with:
     apt-get -y install uuid-dev
 
 On other POSIX-like operating systems, `libuuid` and its header files
-may be in a package named `libuuid-devel` or `util-linux-libs`. The
+may be in a package named `libuuid-devel`, `util-linux-libs` or `uuid-dev`. The
 source code for `libuuid` is maintained in the
 [util-linux repository](https://github.com/karelzak/util-linux).
 
@@ -160,37 +193,3 @@ If you'd like to develop & debug AFDKO using Xcode, run:
 
 For further information on building from source see
 [docs/FDK\_Build\_Notes.md](docs/FDK_Build_Notes.md).
-
-**Note**
-
-It's not possible to install the afdko in editable/develop mode using
-`python -m pip install -e .` ; this is because the toolkit includes binary C executables
-which setup.py tries to install in the bin/ (or Scripts/) folder, however
-this process was only meant to be used with text-based scripts (either
-written in Python or a shell scripting language). To work around this problem
-(which really only impacts the few core afdko developers who need to get live
-feedback as they modify the source files) you can use alternative methods like
-exporting a PYTHONPATH, using a .pth file or similar hacks.
-For further details read [this comment](https://github.com/adobe-type-tools/afdko/pull/677#issuecomment-436747212).
-
-Major changes from version 2.5.x
---------------------------------
-
-* The AFDKO has been restructured so that it can be installed as a Python
-package. It now depends on the user's Python interpreter, and no longer
-contains its own Python interpreter.
-
-* Two programs, **IS** and **checkoutlines** were dropped because their source
-code could not be open-sourced. These tools are available in [release version
-2.5.65322 and older](https://github.com/adobe-type-tools/afdko/releases?after=2.6.22).
-
-**Note**
-
-If you install the old AFDKO as well as the new PyPI afdko package, the tools from
-the newer version will take precedence over the older. This happens because pip
-adds the afdko's package path at the beginning of the system's PATH environment
-variable, whereas the old installer adds it at the end; this modification to PATH
-is not undone by the uninstaller. If you want to completely remove the path to the
-newer version, you will have to edit the PATH. On the Mac, this means editing the
-line in your login file that sets the PATH variable. On Windows, this means editing
-the PATH environment variable in the system's Control Panel.

@@ -21,4 +21,5 @@ glyph[1] {exclam,-,
   178 266 180 227 180 180 curve
   180 133 178 94 175 55 curve
   100 55 line
+  100 0 line
   endchar}

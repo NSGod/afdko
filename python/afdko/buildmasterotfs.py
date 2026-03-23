@@ -31,10 +31,11 @@ from afdko.fdkutils import (
     run_shell_command,
     get_temp_file_path,
     validate_path,
+    fdk_version,
 )
 from afdko.makeotf import main as makeotf
 
-__version__ = '1.10.0'
+__version__ = fdk_version()
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +100,8 @@ def build_masters(opts):
         master_path = os.path.join(dsDir, master_path)
         otf_path = f"{os.path.splitext(master_path)[0]}.otf"
 
-        result = makeotf(['-nshw', '-f', master_path, '-o', otf_path,
-                          '-r', '-nS'] + opts.mkot)
+        result = makeotf(['-shw', '-f', master_path, '-o', otf_path,
+                          '-r', '-V', '-nS'] + opts.mkot)
 
         if result:
             raise Exception(f'makeotf return value: {result}')

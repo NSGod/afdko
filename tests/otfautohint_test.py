@@ -863,3 +863,27 @@ def test_big_glyph():
     hintFiles(options)
 
     assert differ([path, out_path])
+
+
+def test_type_hints():
+    """Test that type hints in otfautohint module pass mypy validation."""
+    import sys
+    from pathlib import Path
+    
+    # Find the otfautohint module directory
+    otfautohint_dir = Path(__file__).parent.parent / "python" / "afdko" / "otfautohint"
+    
+    # Run mypy on the otfautohint module
+    result = subprocess.run(
+        [sys.executable, "-m", "mypy", str(otfautohint_dir)],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert that mypy passes (exit code 0)
+    if result.returncode != 0:
+        pytest.fail(
+            f"mypy type checking failed:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )

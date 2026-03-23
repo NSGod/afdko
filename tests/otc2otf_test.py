@@ -2,6 +2,7 @@ import os
 import pytest
 from shutil import copy2, rmtree
 import subprocess
+import tempfile
 
 from afdko.otc2otf import get_options
 from test_utils import (
@@ -22,7 +23,7 @@ LIGHT = 'SourceSerifPro-LightIt.ttf'
 SEMIBOLD = 'SourceSerifPro-SemiboldIt.ttf'
 
 DATA_DIR = os.path.join(os.path.split(__file__)[0], TOOL + '_data')
-TEMP_DIR = os.path.join(DATA_DIR, 'temp_output')
+TEMP_DIR = None  # Initialized in setup_module()
 
 allow_skip_console = os.getenv('AFDKO_TEST_SKIP_CONSOLE',
                                'False').lower() in ('true', '1', 't')
@@ -30,17 +31,18 @@ allow_skip_console = os.getenv('AFDKO_TEST_SKIP_CONSOLE',
 
 def setup_module():
     """
-    Create the temporary output directory
+    Create the temporary output directory in system temp
     """
-    rmtree(TEMP_DIR, ignore_errors=True)
-    os.mkdir(TEMP_DIR)
+    global TEMP_DIR
+    TEMP_DIR = tempfile.mkdtemp(prefix='afdko_otc2otf_test_')
 
 
 def teardown_module():
     """
     teardown the temporary output directory
     """
-    rmtree(TEMP_DIR)
+    if TEMP_DIR and os.path.exists(TEMP_DIR):
+        rmtree(TEMP_DIR)
 
 
 # -----

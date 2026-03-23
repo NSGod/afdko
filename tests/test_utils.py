@@ -44,6 +44,23 @@ def get_data_dir():
     return os.path.join(tests_dir, tool_name + '_data')
 
 
+def get_temp_dir(data_dir, base_name='temp_output'):
+    """
+    Get a temporary directory path unique per pytest-xdist worker.
+    This prevents race conditions when tests run in parallel.
+
+    Args:
+        data_dir: The data directory path (typically TOOL + '_data')
+        base_name: Base name for the temp directory (default: 'temp_output')
+
+    Returns:
+        Path to worker-specific temp directory
+    """
+    worker_id = os.getenv('PYTEST_XDIST_WORKER', '')
+    temp_suffix = f'_{worker_id}' if worker_id else ''
+    return os.path.join(data_dir, f'{base_name}{temp_suffix}')
+
+
 def get_expected_path(file_name):
     return os.path.join(get_data_dir(), 'expected_output', file_name)
 

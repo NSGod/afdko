@@ -1,0 +1,63 @@
+# Test: Various invalid location identifier errors
+# Level: Errors (no dependencies)
+# Tests: Parse and semantic errors for malformed location names
+# Expected: Multiple errors for different invalid patterns
+
+languagesystem DFLT dflt;
+
+# ============================================================================
+# Location names starting with digit (PARSE ERROR)
+# ============================================================================
+# Location names must start with letter or underscore, not digit
+locationDef wght=400d @1Regular;
+
+# ============================================================================
+# Location names with invalid characters (PARSE ERROR)
+# ============================================================================
+# Hyphens are not allowed in location names
+# Valid: A-Z, a-z, 0-9, _, .
+locationDef wght=500d @Light-Weight;
+
+# Spaces are not allowed
+locationDef wght=600d @Light Weight;
+
+# ============================================================================
+# Axis tag length errors (SEMANTIC ERROR)
+# ============================================================================
+# Axis tags must be exactly 4 characters
+locationDef weight=400d @TooLongTag;  # 6 chars - too long
+locationDef wg=400d @TooShortTag;     # 2 chars - too short
+
+# ============================================================================
+# Invalid axis unit (PARSE ERROR)
+# ============================================================================
+# Axis units must be d (design), u (user), or n (normalized)
+locationDef wght=400x @InvalidUnit;
+
+# ============================================================================
+# Empty location definition (PARSE ERROR)
+# ============================================================================
+# Location must specify at least one axis=value
+locationDef @Empty;
+
+# ============================================================================
+# Missing location name (PARSE ERROR)
+# ============================================================================
+# locationDef requires a @name at the end
+locationDef wght=800d;
+
+# ============================================================================
+# Missing @ in location reference (PARSE ERROR)
+# ============================================================================
+# First define a valid location
+locationDef wght=700d @Bold;
+
+# Then try to reference it without @ - should fail
+valueRecordDef (Bold:60) VAL_NO_AT;
+
+# ============================================================================
+# Malformed inline location - missing value (PARSE ERROR)
+# ============================================================================
+# Inline locations need axis=value:metric syntax
+# This is missing the :metric part
+valueRecordDef (wght=400d) VAL_MISSING_VALUE;

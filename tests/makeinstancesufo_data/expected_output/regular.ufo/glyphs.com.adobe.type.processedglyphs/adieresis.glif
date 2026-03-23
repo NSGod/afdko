@@ -54,8 +54,9 @@
 			<point x="237.836" y="-13.123"/>
 			<point x="271.341" y="12.546"/>
 			<point x="325.892" y="66.652" type="curve"/>
-			<point name="hintRef0002" x="334.67" y="19.078"/>
-			<point x="368.043" y="-10.247"/>
+			<point x="326.917" y="61.606" type="line"/>
+			<point name="hintRef0002" x="337.052" y="17.038"/>
+			<point x="369.739" y="-10.247"/>
 			<point x="415.918" y="-10.247" type="curve"/>
 			<point x="451.44" y="-10.247"/>
 			<point x="478.934" y="3.206"/>
@@ -136,7 +137,7 @@
 					</dict>
 				</array>
 				<key>id</key>
-				<string>8f498002311fb435904c3dfe0aa516b80ce141156ea9381f5dfa2423e0af0ec92446e867818979034cd64d176d89135c2242ccdac049dc47c78dbfea8b2febf9</string>
+				<string>d6f56c5a2abd75e1d5c766dc9fba86d0208a7b2bc0ecb4a8cdeb25454b2cbb1acf0f3987be0888f2335df7a2d9449a3efc368763a2f26e49cb6f8b744f63d8e5</string>
 			</dict>
 		</dict>
 	</lib>

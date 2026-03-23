@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef SVGWRITE_H
-#define SVGWRITE_H
+#ifndef SHARED_INCLUDE_SVGWRITE_H_
+#define SHARED_INCLUDE_SVGWRITE_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define SVW_VERSION CTL_MAKE_VERSION(1, 1, 11)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* SVG Font Format Generation Library
    =====================================
@@ -46,7 +45,7 @@ extern "C" {
 
 typedef struct svwCtx_ *svwCtx;
 svwCtx svwNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define SVW_CHECK_ARGS CTL_CHECK_ARGS_CALL(SVW_VERSION)
 
@@ -128,7 +127,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from svwerr.h. */
 
-char *svwErrStr(int err_code);
+const char *svwErrStr(int err_code);
 
 /* svwErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -138,8 +137,4 @@ void svwGetVersion(ctlVersionCallbacks *cb);
 /* svwGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SVGWRITE_H */
+#endif  // SHARED_INCLUDE_SVGWRITE_H_

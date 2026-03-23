@@ -15,7 +15,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def removeOverlap(glyph):
+def removeOverlap(glyph: glyphData) -> glyphData | None:
     """
     If the glyphData 'glyph' object has overlap, create a new glyphData
     object with the overlap removed and return it.  If it has no overlap

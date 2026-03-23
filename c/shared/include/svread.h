@@ -2,18 +2,17 @@
    This software is licensed as OpenSource, under the Apache License, Version 2.0.
    This license is available at: http://opensource.org/licenses/Apache-2.0. */
 
-#ifndef SVREAD_H
-#define SVREAD_H
+#ifndef SHARED_INCLUDE_SVREAD_H_
+#define SHARED_INCLUDE_SVREAD_H_
+
+#include <memory>
 
 #include "ctlshare.h"
+#include "slogger.h"
 
 #define SVR_VERSION CTL_MAKE_VERSION(1, 0, 8)
 
 #include "absfont.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*SVG Font Parser Library
    =======================================
@@ -33,7 +32,7 @@ extern "C" {
 
 typedef struct svrCtx_ *svrCtx;
 svrCtx svrNew(ctlMemoryCallbacks *mem_cb, ctlStreamCallbacks *stm_cb,
-              CTL_CHECK_ARGS_DCL);
+              CTL_CHECK_ARGS_DCL, std::shared_ptr<slogger> logger = nullptr);
 
 #define SVR_CHECK_ARGS CTL_CHECK_ARGS_CALL(SVR_VERSION)
 
@@ -89,7 +88,7 @@ int svrIterateGlyphs(svrCtx h, abfGlyphCallbacks *glyph_cb);
 int svrGetGlyphByTag(svrCtx h,
                      unsigned short tag, abfGlyphCallbacks *glyph_cb);
 int svrGetGlyphByName(svrCtx h,
-                      char *gname, abfGlyphCallbacks *glyph_cb);
+                      const char *gname, abfGlyphCallbacks *glyph_cb);
 
 /* svrGetGlyphByTag(), svrGetGlyphByName() are called
    obtain glyph data from a glyph selected by its tag (described above) or its
@@ -136,7 +135,7 @@ enum {
    positive non-zero error code that is defined in the above enumeration that
    is built from svrerr.h. */
 
-char *svrErrStr(int err_code);
+const char *svrErrStr(int err_code);
 
 /* svrErrStr() maps the "err_code" parameter to a null-terminated error
    string. */
@@ -146,8 +145,4 @@ void svrGetVersion(ctlVersionCallbacks *cb);
 /* svrGetVersion() returns the library version number and name via the client
    callbacks passed with the "cb" parameter (see ctlshare.h). */
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SVREAD_H */
+#endif  // SHARED_INCLUDE_SVREAD_H_

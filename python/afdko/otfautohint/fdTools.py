@@ -13,6 +13,15 @@ import re
 import numbers
 import sys
 import os
+from typing import Any, TYPE_CHECKING
+
+from . import Number
+
+if TYPE_CHECKING:
+    from .__main__ import HintOptions, ReportOptions
+    from .autohint import FontInstance
+    from .otfFont import CFFFontData
+    from .ufoFont import UFOFontData
 
 
 log = logging.getLogger(__name__)
@@ -110,12 +119,34 @@ kFontInfoKeys = (kOtherFDDictKeys +
                  ["StemSnapH", "StemSnapV"])
 
 
+BlueValue = tuple[int, int, str, str, int]
+BlueZoneDict = dict[tuple[int, int], tuple[int, str, str]]
+
+
 class FontInfoParseError(ValueError):
     pass
 
 
 class FDDict:
-    def __init__(self, fdIndex, dictName=None, fontName=None):
+    BlueValuesPairs: list[BlueValue]
+    OtherBlueValuesPairs: list[BlueValue]
+    BlueFuzz: int
+    DominantH: list[int]
+    DominantV: list[int]
+    BaselineOvershoot: Number
+    BaselineYCoord: Number
+    CapHeight: Number
+    CapOvershoot: Number
+    FamilyBaselineYCoord: Number
+    OrigEmSqUnits: Number
+    FontName: str | None
+
+    def __init__(
+        self,
+        fdIndex: int | None,
+        dictName: str | None = None,
+        fontName: str | None = None
+    ) -> None:
         self.fdIndex = fdIndex
         for key in kFDDictKeys:
             setattr(self, key, None)
@@ -130,7 +161,7 @@ class FDDict:
         setattr(self, kFontDictFamilyPairsName, [])
         setattr(self, kFontDictOtherFamilyPairsName, [])
 
-    def __str__(self):
+    def __str__(self) -> str:
         a = ''
         for k, v in vars(self).items():
             if k not in kFontInfoKeys or v is None:
@@ -148,7 +179,7 @@ class FDDict:
             a += "%s %s\n" % (k, v)
         return a
 
-    def setInfo(self, key, value):
+    def setInfo(self, key, value) -> None:
         if key == 'LanguageGroup':
             if ((isinstance(value, numbers.Number) and value == 1) or
                     value == '1'):
@@ -276,13 +307,20 @@ class FDDict:
                 setattr(self, pairFieldName, bluePairList)
         return
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         fddict = {k: v for k, v in vars(self).items() if v is not None}
         return "<%s '%s' %s>" % (
             self.__class__.__name__, fddict.get('DictName', 'no name'), fddict)
 
 
-def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
+def parseFontInfoFile(
+    fdArrayMap: dict[int, FDDict],
+    data: str,
+    glyphList: list[str],
+    maxY: int,
+    minY: int,
+    fontName: str
+) -> tuple[dict[str, int], FDDict | None]:
     # fontDictList may or may not already contain a
     # font dict taken from the source font top FontDict.
     # The map of glyph names to font dict: the index into fontDictList.
@@ -313,6 +351,7 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
     maxfdIndex = max(fdArrayMap.keys())
     dictValueList = []
     dictKeyWord = ''
+    fdDict: FDDict | None = None
 
     state = baseState
 
@@ -377,6 +416,7 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
         elif state == inDictValue:
             if token[-1] in ["]", ")"]:
                 dictValueList.append(token[:-1])
+                assert fdDict is not None
                 fdDict.setInfo(dictKeyWord, dictValueList)
                 state = dictState  # found the last token in the list value.
             else:
@@ -399,6 +439,7 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
                 for gname in glyphList:
                     if re.search(token, gname):
                         # fdIndex value
+                        assert setName is not None
                         fdSelectMap[gname] = fdIndexDict[setName]
                     gi += 1
 
@@ -415,6 +456,7 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
                 dictName = None
                 fdDict = None
             else:
+                assert fdDict is not None
                 if token in kFDDictKeys:
                     value = tokenList[i]
                     i += 1
@@ -434,6 +476,7 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
 
     for dictName, fdIndex in fdIndexDict.items():
         fdDict = fdArrayMap[fdIndex]
+        assert fdDict is not None
         if fdDict.DominantH is None:
             log.warning("The FDDict '%s' in fontinfo has no "
                         "DominantH value", dictName)
@@ -463,9 +506,9 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
         for key in kBlueValueKeys + kOtherBlueValueKeys:
             defaultFDDict.setInfo(key, None)
         defaultFDDict.BaselineYCoord = minY - 100
-        defaultFDDict.BaselineOvershoot = 0
-        defaultFDDict.CapHeight = maxY + 100
-        defaultFDDict.CapOvershoot = 0
+        defaultFDDict.BaselineOvershoot = 0  # type: ignore[attr-defined]
+        defaultFDDict.CapHeight = maxY + 100  # type: ignore[attr-defined]
+        defaultFDDict.CapOvershoot = 0  # type: ignore[attr-defined]
         defaultFDDict.BlueFuzz = 0
         defaultFDDict.DictName = kDefaultDictName  # "No Alignment Zones"
         defaultFDDict.FontName = fontName
@@ -474,13 +517,13 @@ def parseFontInfoFile(fdArrayMap, data, glyphList, maxY, minY, fontName):
     return fdSelectMap, finalFDict
 
 
-def mergeFDDicts(prevDictList):
+def mergeFDDicts(prevDictList: list[FDDict]) -> dict[str, Any]:
     # Extract the union of the stem widths and zones from the list
     # of FDDicts, and replace the current values in the topDict.
-    blueZoneDict = {}
-    otherBlueZoneDict = {}
-    dominantHDict = {}
-    dominantVDict = {}
+    blueZoneDict: BlueZoneDict = {}
+    otherBlueZoneDict: BlueZoneDict = {}
+    dominantHDict: dict[int, str] = {}
+    dominantVDict: dict[int, str] = {}
     bluePairListNames = [kFontDictBluePairsName, kFontDictOtherBluePairsName]
     zoneDictList = [blueZoneDict, otherBlueZoneDict]
     for prefDDict in prevDictList:
@@ -500,18 +543,18 @@ def mergeFDDicts(prevDictList):
         stemDictList = [dominantHDict, dominantVDict]
         for i in (0, 1):
             stemFieldName = stemNameList[i]
-            dList = getattr(prefDDict, stemFieldName)
+            dList: list[int] = getattr(prefDDict, stemFieldName)
             stemDict = stemDictList[i]
             if dList is not None:
                 for width in dList:
                     stemDict[width] = prefDDict.DictName
-
+    assert prefDDict
     # Now we have collected all the stem widths and zones
     # from all the dicts. See if we can merge them.
-    goodBlueZoneList = []
-    goodOtherBlueZoneList = []
-    goodHStemList = []
-    goodVStemList = []
+    goodBlueZoneList: list[int] = []
+    goodOtherBlueZoneList: list[int] = []
+    goodHStemList: list[int] = []
+    goodVStemList: list[int] = []
 
     zoneDictList = [blueZoneDict, otherBlueZoneDict]
     goodZoneLists = [goodBlueZoneList, goodOtherBlueZoneList]
@@ -525,10 +568,9 @@ def mergeFDDicts(prevDictList):
         goodStemList = goodStemLists[ki]
 
         # Zones first.
-        zoneList = zoneDict.keys()
+        zoneList = sorted(zoneDict.keys())
         if not zoneList:
             continue
-        zoneList = sorted(zoneList)
         # Now check for conflicts.
         prevZone = zoneList[0]
         goodZoneList.append(prevZone[1])
@@ -558,10 +600,9 @@ def mergeFDDicts(prevDictList):
 
             prevZone = zone
 
-        stemList = stemDict.keys()
+        stemList = sorted(stemDict.keys())
         if not stemList:
             continue
-        stemList = sorted(stemList)
         # Now check for conflicts.
         prevStem = stemList[0]
         goodStemList.append(prevStem)
@@ -574,7 +615,7 @@ def mergeFDDicts(prevDictList):
             else:
                 goodStemList.append(stem)
             prevStem = stem
-    privateMap = {}
+    privateMap: dict[str, Any] = {}
     if goodBlueZoneList:
         privateMap['BlueValues'] = goodBlueZoneList
     if goodOtherBlueZoneList:
@@ -607,7 +648,10 @@ def fontinfoIncludeData(fdir, idir, match):
                              incrpath)
 
 
-def fontinfoFileData(options, font):
+def fontinfoFileData(
+    options: "HintOptions | ReportOptions",
+    font: "UFOFontData | CFFFontData"
+) -> tuple[str, bool] | tuple[None, None]:
     # Don't use fontinfo file for a variable font
     if not font.isVF():
         fdir = os.path.dirname(font.getInputPath())
@@ -632,7 +676,13 @@ def fontinfoFileData(options, font):
     return None, None
 
 
-def getFDInfo(font, desc, options, glyphList, isVF):
+def getFDInfo(
+    font: "UFOFontData | CFFFontData",
+    desc: str,
+    options: "HintOptions | ReportOptions",
+    glyphList: list[str],
+    isVF: bool
+) -> tuple[dict[str, int], Any, Any]:
     privateMap = None
     # Check the fontinfo file, and add any other font dicts
     srcFontinfoData, hasDict = fontinfoFileData(options, font)
@@ -642,10 +692,12 @@ def getFDInfo(font, desc, options, glyphList, isVF):
                                        options.noFlex,
                                        options.vCounterGlyphs,
                                        options.hCounterGlyphs, desc)
-        fdArrayMap = {0: fdDict}
-        minY, maxY = font.get_min_max(fdDict.OrigEmSqUnits)
+        assert isinstance(fdDict, FDDict)
+        fdArrayMap: dict[int, FDDict] = {0: fdDict}
+        minY, maxY = font.get_min_max(int(fdDict.OrigEmSqUnits))
+        assert srcFontinfoData is not None
         fdSelectMap, finalFDict = parseFontInfoFile(
-            fdArrayMap, srcFontinfoData, glyphList, maxY, minY, desc)
+            fdArrayMap, srcFontinfoData, glyphList, int(maxY), int(minY), desc)
         if finalFDict is None:
             # If a font dict was not explicitly specified for the
             # output font, use the first user-specified font dict.
@@ -655,22 +707,24 @@ def getFDInfo(font, desc, options, glyphList, isVF):
             privateMap = mergeFDDicts([finalFDict])
     elif isVF:
         fdSelectMap = {}
-        dictRecord = {}
+        dictRecord: dict[int, dict[int, FDDict]] = {}
         fdArraySet = set()
         for name in glyphList:
             fdIndex = font.getfdIndex(name)
             if fdIndex is None:
                 continue
             if fdIndex not in fdArraySet:
-                fddict, model = font.getPrivateFDDict(options.allowNoBlues,
-                                                      options.noFlex,
-                                                      options.vCounterGlyphs,
-                                                      options.hCounterGlyphs,
-                                                      desc, fdIndex)
+                result = font.getPrivateFDDict(options.allowNoBlues,
+                                               options.noFlex,
+                                               options.vCounterGlyphs,
+                                               options.hCounterGlyphs,
+                                               desc, fdIndex)
+                assert isinstance(result, tuple)
+                fddict, model = result
                 fdArraySet.add(fdIndex)
                 if model not in dictRecord:
                     dictRecord[model] = {}
-                dictRecord[model][fdIndex] = fddict
+                dictRecord[model][fdIndex] = fddict  # type: ignore
             fdSelectMap[name] = fdIndex
         return fdSelectMap, dictRecord, None
     else:
@@ -681,11 +735,11 @@ def getFDInfo(font, desc, options, glyphList, isVF):
             if fdIndex is None:
                 continue
             if fdIndex not in fdArrayMap:
-                fddict = font.getPrivateFDDict(options.allowNoBlues,
-                                               options.noFlex,
-                                               options.vCounterGlyphs,
-                                               options.hCounterGlyphs,
-                                               desc, fdIndex)
+                fddict = font.getPrivateFDDict(  # type: ignore[assignment]
+                    options.allowNoBlues, options.noFlex,
+                    options.vCounterGlyphs, options.hCounterGlyphs,
+                    desc, fdIndex)
+                assert isinstance(fddict, FDDict)
                 fdArrayMap[fdIndex] = fddict
             fdSelectMap[name] = fdIndex
 
@@ -693,13 +747,19 @@ def getFDInfo(font, desc, options, glyphList, isVF):
 
 
 class FDDictManager:
-    def __init__(self, options, fontInstances, glyphList, isVF=False):
+    def __init__(
+        self,
+        options: "HintOptions | ReportOptions",
+        fontInstances: list["FontInstance"],
+        glyphList: list[str],
+        isVF: bool = False
+    ) -> None:
         self.options = options
         self.fontInstances = fontInstances
         self.glyphList = glyphList
         self.isVF = isVF
-        self.fdSelectMap = None
-        self.auxRecord = {}
+        self.fdSelectMap: dict | None = None
+        self.auxRecord: dict[int, Any] = {}
         refI = fontInstances[0]
         fdArrayCompat = True
         fdArrays = []
@@ -731,11 +791,12 @@ class FDDictManager:
                 for fdIndex in fdArrays[0].keys():
                     fdmap[fdIndex] = [x[fdIndex] if fdIndex in x else None
                                       for x in fdArrays]
-                self.dictRecord = {0: fdmap}
+                self.dictRecord = {0: fdmap}  # type: ignore[assignment]
             else:
                 log.error("Cannot continue")
                 sys.exit()
 
+        assert self.fdSelectMap
         if options.printFDDictList or options.printAllFDDict:
             # Print the user defined FontDicts, and exit.
             print("Private Dictionaries:\n")
@@ -765,7 +826,8 @@ class FDDictManager:
     def getDictRecord(self):
         return self.dictRecord
 
-    def getRecKey(self, gname, vsindex):
+    def getRecKey(self, gname: str, vsindex):
+        assert self.fdSelectMap is not None
         fdIndex = self.fdSelectMap[gname]
         if vsindex in self.dictRecord and fdIndex in self.dictRecord[vsindex]:
             return vsindex, fdIndex
@@ -783,7 +845,7 @@ class FDDictManager:
         self.auxRecord[vsindex][fdIndex] = fddict
         return fddict
 
-    def checkGlyphList(self):
+    def checkGlyphList(self) -> None:
         options = self.options
         glyphSet = set(self.glyphList)
         # Check for missing glyphs explicitly added via fontinfo or cmd line
@@ -797,7 +859,7 @@ class FDDictManager:
                 log.warning("%s glyph named in fontinfo is " % label +
                             "not in font: %s" % name)
 
-    def addDict(self, dict1, dict2):
+    def addDict(self, dict1: dict, dict2: dict) -> bool:
         # This allows for sparse masters, just verifying that if a glyph name
         # is in both dictionaries it maps to the same index.
         good = True

@@ -1,5 +1,7 @@
 # Copyright 2014 Adobe. All rights reserved.
 
+from __future__ import annotations
+
 """
 This module provides means of reading glyph data from and writing data
 to UFO fonts, partly in virtue of the fontTools UFO library.
@@ -112,14 +114,17 @@ import os
 import shutil
 
 from types import SimpleNamespace
+from typing import Any
 
 # from fontTools.pens.basePen import BasePen
 from fontTools.pens.pointPen import AbstractPointPen
 from fontTools.ufoLib import UFOReader, UFOWriter
 from fontTools.ufoLib.errors import UFOLibError
+from fontTools.ufoLib.glifLib import Glyph, GlyphSet
 
-from . import fdTools, FontParseError
+from . import fdTools, FontParseError, Number
 from .glyphData import glyphData, norm_float
+from .fdTools import FDDict
 
 
 log = logging.getLogger(__name__)
@@ -342,49 +347,58 @@ STACK_LIMIT = 46
 
 
 class UFOFontData:
-    def __init__(self, path, log_only, write_to_default_layer):
+    def __init__(
+        self, path: str, log_only: bool, write_to_default_layer: bool
+    ) -> None:
         self._reader = UFOReader(path, validate=False)
 
         self.path = path
-        self._glyphmap = None
-        self._processed_layer_glyphmap = None
-        self.newGlyphMap = {}
-        self._fontInfo = None
-        self._glyphsets = {}
+        self._glyphmap: dict[str, str] | None = None
+        self._processed_layer_glyphmap: dict[str, str] | None = None
+        self.newGlyphMap: dict[str, GlyphDataWrapper] = {}
+        self._fontInfo: dict[str, Any] | None = None
+        self._glyphsets: dict[str | None, GlyphSet] = {}
         # If True, we are running in report mode and not doing any changes, so
         # we skip the hash map and process all glyphs.
         self.log_only = log_only
         # Used to store the hash of glyph data of already processed glyphs. If
         # the stored hash matches the calculated one, we skip the glyph.
         self._hashmap = None
-        self.fontDict = None
+        self.fontDict: FDDict | None = None
         self.hashMapChanged = False
         # If True, then write data to the default layer
         self.writeToDefaultLayer = write_to_default_layer
         self.desc = None
 
-    def getUnitsPerEm(self):
+    def getUnitsPerEm(self) -> int:
         return self.fontInfo.get("unitsPerEm", 1000)
 
-    def getPSName(self):
+    def getPSName(self) -> str:
         return self.fontInfo.get("postscriptFontName", "PSName-Undefined")
 
-    def getInputPath(self):
+    def getInputPath(self) -> str:
         return self.path
 
     @staticmethod
-    def isCID():
+    def isCID() -> bool:
         return False
 
-    def convertToGlyphData(self, name, readStems, readFlex, roundCoords,
-                           doAll=False):
-        glyph, skip = self._get_or_skip_glyph(name, readStems, readFlex,
-                                              roundCoords, doAll)
+    def convertToGlyphData(
+        self,
+        name: str,
+        readStems: bool,
+        readFlex: bool,
+        roundCoords: bool,
+        doAll: bool = False
+    ) -> glyphData | None:
+        glyph, skip = self._get_or_skip_glyph(
+            name, readStems, readFlex, roundCoords, doAll
+        )
         if skip:
             return None
         return glyph
 
-    def updateFromGlyph(self, glyph, name):
+    def updateFromGlyph(self, glyph: glyphData, name: str) -> None:
         if glyph is None:
             try:
                 self.removeHashEntry(name)
@@ -395,6 +409,7 @@ class UFOFontData:
         if name in self.processedLayerGlyphMap:
             layer = PROCESSED_LAYER_NAME
         glyphset = self._get_glyphset(layer)
+        assert glyphset
 
         gdwrap = GlyphDataWrapper(glyph)
         glyphset.readGlyph(name, gdwrap)
@@ -406,7 +421,7 @@ class UFOFontData:
         # been run before, which will add an entry for this glyph.
         self.updateHashEntry(name)
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         if path is None:
             path = self.path
 
@@ -423,7 +438,7 @@ class UFOFontData:
                            self._reader.formatVersionTuple,
                            validate=False)
 
-        layer = PROCESSED_LAYER_NAME
+        layer: str | None = PROCESSED_LAYER_NAME
         if self.writeToDefaultLayer:
             layer = None
 
@@ -493,9 +508,9 @@ class UFOFontData:
             data.append("'%s': %s," % (gName, hashMap[gName]))
         data.append("}")
         data.append("")
-        data = "\n".join(data)
+        joined = "\n".join(data)
 
-        writer.writeData(HASHMAP_NAME, data.encode("utf-8"))
+        writer.writeData(HASHMAP_NAME, joined.encode("utf-8"))
 
     def updateHashEntry(self, glyphName):
         # srcHash has already been set: we are fixing the history list.
@@ -604,9 +619,11 @@ class UFOFontData:
                                              roundCoords, glyphset)
         return glyph_data, skip
 
-    def getGlyphList(self):
+    def getGlyphList(self) -> list[str]:
         glyphOrder = self._reader.readLib().get(PUBLIC_GLYPH_ORDER, [])
-        glyphList = list(self._get_glyphset().keys())
+        glyphset = self._get_glyphset()
+        assert glyphset is not None
+        glyphList = list(glyphset.keys())
 
         # Sort the returned glyph list by the glyph order as we depend in the
         # order for expanding glyph ranges.
@@ -614,12 +631,14 @@ class UFOFontData:
             if v in glyphOrder:
                 return glyphOrder.index(v)
             return len(glyphOrder)
+
         return sorted(glyphList, key=key_fn)
 
     @property
     def glyphMap(self):
         if self._glyphmap is None:
             glyphset = self._get_glyphset()
+            assert glyphset is not None
             self._glyphmap = glyphset.contents
         return self._glyphmap
 
@@ -640,8 +659,15 @@ class UFOFontData:
             self._fontInfo = vars(info)
         return self._fontInfo
 
-    def getPrivateFDDict(self, allowNoBlues, noFlex, vCounterGlyphs,
-                         hCounterGlyphs, desc, fdIndex=None):
+    def getPrivateFDDict(
+        self,
+        allowNoBlues: bool,
+        noFlex: bool,
+        vCounterGlyphs: dict[str, bool],
+        hCounterGlyphs: dict[str, bool],
+        desc: str,
+        fdIndex: int | None = None
+    ) -> FDDict:
         if self.fontDict is not None:
             return self.fontDict
 
@@ -753,46 +779,57 @@ class UFOFontData:
         self.fontDict = fdDict
         return fdDict
 
-    def getfdIndex(self, name):
+    def getfdIndex(self, name: str) -> int:
         # XXX update for postscriptFDArray in lib.plist
         return 0
 
-    def isVF(self):
+    def isVF(self) -> bool:
         return False
 
-    def get_min_max(self, upm):
+    def get_min_max(self, upm: int) -> tuple[int, int]:
         return -upm, 2 * upm
 
-    def mergePrivateMap(self, privateMap):
+    def mergePrivateMap(self, privateMap: dict[str, list[int]]) -> None:
         for k, v in privateMap.items():
             setattr(self.fontDict, k, v)
 
     @staticmethod
-    def close():
+    def close() -> None:
         return
 
 
 class HashPointPen(AbstractPointPen):
 
-    def __init__(self, glyph, glyphset=None):
+    def __init__(
+        self,
+        glyph: GlyphDataWrapper | Glyph,
+        glyphset: GlyphSet | None = None
+    ) -> None:
         self.glyphset = glyphset
         self.width = norm_float(round(getattr(glyph, "width", 0), 9))
         self.data = ["w%s" % self.width]
 
-    def getHash(self):
+    def getHash(self) -> str:
         data = "".join(self.data)
         if len(data) >= 128:
             data = hashlib.sha512(data.encode("ascii")).hexdigest()
         return data
 
-    def beginPath(self, identifier=None, **kwargs):
+    def beginPath(self, identifier: None = None, **kwargs) -> None:
         pass
 
-    def endPath(self):
+    def endPath(self) -> None:
         pass
 
-    def addPoint(self, pt, segmentType=None, smooth=False, name=None,
-                 identifier=None, **kwargs):
+    def addPoint(
+        self,
+        pt: tuple[Number, Number],
+        segmentType: str | None = None,
+        smooth: bool = False,
+        name: str | None = None,
+        identifier: None = None,
+        **kwargs
+    ) -> None:
         if segmentType is None:
             pt_type = ""
         else:
@@ -828,19 +865,20 @@ class GlyphDataWrapper(object):
     Wraps a glyphData object while storing the properties set by readGlyph
     to aid output of hint data in Adobe's "hint format 2" for UFO.
     """
-    def __init__(self, glyph):
-        self._glyph = glyph
-        self.lib = {}
+
+    def __init__(self, glyph: glyphData) -> None:
+        self._glyph: glyphData = glyph
+        self.lib: dict[str, Any] = {}
         if hasattr(glyph, 'width'):
             self.width = norm_float(glyph.width)
 
-    def addUfoFlex(self, uhl, pointname):
+    def addUfoFlex(self, uhl: dict[str, Any], pointname: str):
         """Mark the named point as starting a flex hint"""
         if uhl.get(FLEX_INDEX_LIST_NAME, None) is None:
             uhl[FLEX_INDEX_LIST_NAME] = []
         uhl[FLEX_INDEX_LIST_NAME].append(pointname)
 
-    def addUfoMask(self, uhl, masks, pointname):
+    def addUfoMask(self, uhl: dict[str, Any], masks, pointname: str):
         """Associates the hint set represented by masks with the named point"""
         if uhl.get(HINT_SET_LIST_NAME, None) is None:
             uhl[HINT_SET_LIST_NAME] = []
@@ -869,12 +907,13 @@ class GlyphDataWrapper(object):
                     p, w = s.UFOVals()
                     ustems.append("%s %s %s" % (opname[i], norm_float(p),
                                                 norm_float(w)))
-        hintset = {}
+        hintset: dict[str, Any] = {}
         hintset[POINT_TAG] = pointname
         hintset[STEMS_NAME] = ustems
         uhl[HINT_SET_LIST_NAME].append(hintset)
 
-    def addUfoHints(self, uhl, pe, labelnum, startSubpath=False):
+    def addUfoHints(self, uhl: dict[str, Any] | None, pe, labelnum: int,
+                    startSubpath=False) -> tuple[int, str | None]:
         """Adds hints to the pathElement, naming points as necessary"""
         pn = POINT_NAME_PATTERN % labelnum
         if uhl is None:
@@ -899,7 +938,7 @@ class GlyphDataWrapper(object):
         some points and building a library of hint annotations
         """
         if ufoHintLib is not None:
-            uhl = {}
+            uhl: dict[str, Any] = {}
             ufoH = lambda pe, lm, ss=False: self.addUfoHints(uhl, pe, lm, ss)
         else:
             ufoH = None

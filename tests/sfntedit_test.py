@@ -6,8 +6,16 @@ from differ import main as differ
 from test_utils import (get_input_path, get_expected_path, get_temp_file_path,
                         generate_ttx_dump, font_has_table)
 
+# Tests use the unified 'afdko' invoker by default for the primary test path.
+# This reflects real-world usage where users run 'afdko sfntedit ...' commands.
+# A small backwards compatibility test at the end verifies wrappers still work.
 TOOL = 'sfntedit'
 CMD = ['-t', TOOL]
+
+
+def _tool_cmd(*args):
+    """Helper to construct command using unified invoker."""
+    return ['afdko', TOOL] + list(args)
 
 LIGHT = 'light.otf'
 ITALIC = 'italic.otf'
@@ -19,17 +27,17 @@ ITALIC = 'italic.otf'
 
 def test_exit_no_option():
     # When ran by itself, 'sfntedit' prints the usage
-    assert subprocess.call([TOOL]) == 1
+    assert subprocess.call(_tool_cmd()) == 1
 
 
 @pytest.mark.parametrize('arg', ['-h', '-u'])
 def test_exit_known_option(arg):
-    assert subprocess.call([TOOL, arg]) == 0
+    assert subprocess.call(_tool_cmd(arg)) == 0
 
 
 @pytest.mark.parametrize('arg', ['-j', '--bogus'])
 def test_exit_unknown_option(arg):
-    assert subprocess.call([TOOL, arg]) == 1
+    assert subprocess.call(_tool_cmd(arg)) == 1
 
 
 def test_no_options():
@@ -84,7 +92,7 @@ def test_missing_table_delete_bug160():
                                 '-f', LIGHT, actual_path])
     with open(stderr_path, 'rb') as f:
         output = f.read()
-    assert b'[WARNING]: table missing (xyz )' in output
+    assert b'WARNING: table missing (xyz )' in output
     assert font_has_table(get_input_path(LIGHT), 'GSUB')
     assert not font_has_table(actual_path, 'GSUB')
 
@@ -95,7 +103,7 @@ def test_missing_table_extract_bug160():
                                 'x', f'_xyz,head={actual_path}'])
     with open(stderr_path, 'rb') as f:
         output = f.read()
-    assert b'[WARNING]: table missing (xyz )' in output
+    assert b'WARNING: table missing (xyz )' in output
     expected_path = get_expected_path('head_light.tb')
     assert differ([expected_path, actual_path, '-m', 'bin'])
 
@@ -107,4 +115,38 @@ def test_missing_file_add_bug_1658():
                          '-f', font_path, actual_path])
     with open(stderr_path, 'rb') as f:
         output = f.read()
-    assert b'[FATAL]: file error <No such file or directory> [non_existing_GDEF_file]' in output  # noqa: E501
+    assert b'file error <could not open> [non_existing_GDEF_file]' in output  # noqa: E501
+
+
+# ---------------------------------
+# Backwards Compatibility Tests
+# ---------------------------------
+# Minimal tests to verify wrapper scripts still work.
+# Main tests above use the invoker (the norm).
+
+class TestWrapperBackwardsCompatibility:
+    """Verify that the sfntedit wrapper script still works for backwards compatibility."""
+
+    @pytest.mark.parametrize('arg', ['-h', '-u'])
+    def test_wrapper_help(self, arg):
+        """Wrapper script handles basic options."""
+        assert subprocess.call([TOOL, arg]) == 0
+
+    def test_wrapper_runs_same_code(self):
+        """Wrapper and invoker run the same underlying code."""
+        # Run via invoker
+        inv_result = subprocess.run(_tool_cmd('-h'),
+                                    capture_output=True, text=True)
+        
+        # Run via wrapper
+        wrap_result = subprocess.run([TOOL, '-h'],
+                                     capture_output=True, text=True)
+        
+        # Both should succeed (return code may vary by tool)
+        assert inv_result.returncode == wrap_result.returncode
+        # Both should produce substantial output
+        assert len(inv_result.stdout) > 100
+        assert len(wrap_result.stdout) > 100
+        # Both should contain key help content
+        assert 'Usage' in inv_result.stdout or 'usage' in inv_result.stdout.lower()
+        assert 'Usage' in wrap_result.stdout or 'usage' in wrap_result.stdout.lower()

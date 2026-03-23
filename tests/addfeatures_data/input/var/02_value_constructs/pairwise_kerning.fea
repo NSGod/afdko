@@ -1,0 +1,56 @@
+# Test: Variable pairwise kerning - multiple formats
+# Level: 2 (value constructs)
+# Depends: 00_foundation/locationDef_basic.fea (location definitions)
+# Tests: Different syntax forms for variable positioning values
+
+languagesystem DFLT dflt;
+
+feature kern {
+    # Format 1: Simple xAdvance adjustment (single value)
+    # Default (wght=400u): -40 units
+    # wght=200u (Light): -30 units
+    # wght=900u (Black): -60 units
+    pos A a (-40 wght=200u:-30 wght=900u:-60);
+
+    # Format 2: Four-value positioning with angle brackets inside parens
+    # Tests: <xPlacement yPlacement xAdvance yAdvance>
+    # A-b pair: only xAdvance varies
+    pos A b (<0 0 -45 0> wght=200u:<0 0 -35 0> wght=900u:<0 0 -65 0>);
+
+    # Format 3: Four-value positioning with multiple metrics varying
+    # A-c pair: both xPlacement and xAdvance vary
+    pos A c (<10 0 -50 0> wght=200u:<5 0 -35 0> wght=900u:<15 0 -70 0>);
+
+    # Format 4: Four-value with yPlacement variation (vertical adjustment)
+    # A-d pair: yPlacement varies (for testing non-xAdvance deltas)
+    pos A d (<0 -5 -40 0> wght=200u:<0 -3 -30 0> wght=900u:<0 -8 -60 0>);
+
+    # Format 5: ALL THREE positioning values varying together
+    # A-e pair: xPlacement, yPlacement, and xAdvance all vary
+    # xPlacement: 10→5→15 (shifts second glyph right)
+    # yPlacement: -5→-3→-8 (shifts second glyph down)
+    # xAdvance: -50→-35→-70 (reduces spacing)
+    pos A e (<10 -5 -50 0> wght=200u:<5 -3 -35 0> wght=900u:<15 -8 -70 0>);
+
+    # Format 6: Just xPlacement and yPlacement (no xAdvance)
+    # A-n pair: test positioning offsets without advance adjustment
+    # xPlacement: 20→15→25
+    # yPlacement: 10→5→15
+    pos A n (<20 10 0 0> wght=200u:<15 5 0 0> wght=900u:<25 15 0 0>);
+
+    # Format 7: Angle brackets OUTSIDE - traditional four-value syntax
+    # A-u pair: all four values in one record, varying together
+    # Shows this format also supports variation
+    pos A u <(20 wght=200u:10 wght=900u:30)
+             0
+             (-60 wght=200u:-40 wght=900u:-80)
+             0>;
+
+    # Format 8: TWO AXES - variation on both wght and opsz
+    # b-c pair: kerning varies with both weight and optical size
+    # At small sizes (opsz=8): tighter kerning
+    # At large sizes (opsz=60): looser kerning
+    # Light weight: less kerning, Heavy weight: more kerning
+    pos b c (-30 wght=200u,opsz=8u:-20 wght=200u,opsz=60u:-25
+                  wght=900u,opsz=8u:-50 wght=900u,opsz=60u:-40);
+} kern;

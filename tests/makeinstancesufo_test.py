@@ -9,26 +9,14 @@ from afdko.makeinstancesufo import (
     _split_comma_sequence,
     updateInstance,
 )
+from afdko.fdkutils import get_temp_dir_path
 from runner import main as runner
 from differ import main as differ
-from test_utils import get_input_path
+from test_utils import get_input_path, get_expected_path
 
 TOOL = 'makeinstancesufo'
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), TOOL + '_data')
-TEMP_DIR = os.path.join(DATA_DIR, "temp_output")
-
-
-def _get_output_path(file_name, dir_name):
-    return os.path.join(DATA_DIR, dir_name, file_name)
-
-
-def setup_module():
-    """
-    Create the temporary output directory
-    """
-    rmtree(TEMP_DIR, ignore_errors=True)
-    os.mkdir(TEMP_DIR)
 
 
 def teardown_module():
@@ -55,10 +43,17 @@ def teardown_module():
     (['_8', 'a', '=ufo-version', '_2'], 'ufo2.ufo'),  # no hint UFO v2
 ])
 def test_options(args, ufo_filename):
-    runner(['-t', TOOL, '-o', 'd',
-            f'_{get_input_path("font.designspace")}', 'i'] + args)
-    expected_path = _get_output_path(ufo_filename, 'expected_output')
-    actual_path = _get_output_path(ufo_filename, 'temp_output')
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'font.designspace')
+    runner(['-t', TOOL, '-o', 'd', f'_{ds_path}', 'i'] + args)
+
+    # Compare output with expected
+    expected_path = get_expected_path(ufo_filename)
+    actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
     assert differ([expected_path, actual_path])
 
 
@@ -126,10 +121,17 @@ def test_filename_without_dir():
     (['_3', 'a', '=ufo-version', '_2'], 'ufo3semibold.ufo'),  # no hint UFO v2
 ])
 def test_ufo3_masters(args, ufo_filename):
-    runner(['-t', TOOL, '-o', 'd',
-            f'_{get_input_path("ufo3.designspace")}', 'i'] + args)
-    expected_path = _get_output_path(ufo_filename, 'expected_output')
-    actual_path = _get_output_path(ufo_filename, 'temp_output')
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'ufo3.designspace')
+    runner(['-t', TOOL, '-o', 'd', f'_{ds_path}', 'i'] + args)
+
+    # Compare output with expected
+    expected_path = get_expected_path(ufo_filename)
+    actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
     assert differ([expected_path, actual_path])
 
 
@@ -140,20 +142,27 @@ def test_features_copy(filename):
     # files' line endings after the test was ran and this caused wheel problems
     # https://ci.appveyor.com/project/adobe-type-tools/afdko/builds/25459479
     # ---
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
     # First copy the expected UFOs into the temp folder. The UFOs need to
     # exist before makeinstancesufo is called because this test is about
     # checking that any existing features.fea files are preserved.
     paths = []
     for i in (1, 2):  # two instances
         ufo_filename = f'{filename}{i}.ufo'
-        from_path = _get_output_path(ufo_filename, 'expected_output')
-        to_path = os.path.join(TEMP_DIR, ufo_filename)
+        from_path = get_expected_path(ufo_filename)
+        to_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
+        os.makedirs(os.path.dirname(to_path), exist_ok=True)
         copytree(from_path, to_path)
-        paths.append((to_path, from_path))
-    # run makeinstancesufo
-    runner(['-t', TOOL, '-o', 'a', 'c', 'n', 'd',
-            f'_{get_input_path(f"{filename}.designspace")}'])
-    # assert the expected results
+        paths.append((from_path, to_path))
+
+    # Run makeinstancesufo with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', f'{filename}.designspace')
+    runner(['-t', TOOL, '-o', 'a', 'c', 'n', 'd', f'_{ds_path}'])
+
+    # Assert the expected results
     for expected_path, actual_path in paths:
         assert differ([expected_path, actual_path])
 
@@ -166,10 +175,17 @@ def test_features_copy(filename):
 def test_bend_masters_mutator_math(args, ufo_filename):
     # MutatorMath 2.1.2 did not handle location bending properly which resulted
     # in incorrect interpolation outlines. This was fixed in 3.0.1.
-    runner(['-t', TOOL, '-o', 'a', 'c', 'n', 'd',
-            f'_{get_input_path("bend_test.designspace")}', 'i'] + args)
-    expected_path = _get_output_path(ufo_filename, 'expected_output')
-    actual_path = _get_output_path(ufo_filename, 'temp_output')
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'bend_test.designspace')
+    runner(['-t', TOOL, '-o', 'a', 'c', 'n', 'd', f'_{ds_path}', 'i'] + args)
+
+    # Compare output with expected
+    expected_path = get_expected_path(ufo_filename)
+    actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
     assert differ([expected_path, actual_path])
 
 
@@ -180,10 +196,18 @@ def test_bend_masters_mutator_math(args, ufo_filename):
 ])
 def test_bend_masters_varlib(args, ufo_filename):
     # We should get the same output passing through varLib
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'bend_test.designspace')
     runner(['-t', TOOL, '-o', 'a', 'c', 'n', '=use-varlib', 'd',
-            f'_{get_input_path("bend_test.designspace")}', 'i'] + args)
-    expected_path = _get_output_path(ufo_filename, 'expected_output')
-    actual_path = _get_output_path(ufo_filename, 'temp_output')
+            f'_{ds_path}', 'i'] + args)
+
+    # Compare output with expected
+    expected_path = get_expected_path(ufo_filename)
+    actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
     assert differ([expected_path, actual_path])
 
 
@@ -194,7 +218,13 @@ def test_extrapolate(capfd, use_varlib):
     Using varlib should fail (output should not be extrapolated) because
     extrapolation is not supported by varlib.
     """
-    runner_args = ['-t', TOOL, '-o', 'v', 'd', f'_{get_input_path("extrapolation.designspace")}']  # noqa: E501
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'extrapolation.designspace')
+    runner_args = ['-t', TOOL, '-o', 'v', 'd', f'_{ds_path}']
     if use_varlib:
         runner_args.append('=use-varlib')
     runner(runner_args)
@@ -204,8 +234,8 @@ def test_extrapolate(capfd, use_varlib):
     assert f"Building 2 instances with {tool} ..." in captured.err
 
     for ufo_filename in ("Dummy-ExtraPlus.ufo", "Dummy-ExtraMinus.ufo"):
-        expected_path = _get_output_path(ufo_filename, 'expected_output')
-        actual_path = _get_output_path(ufo_filename, 'temp_output')
+        expected_path = get_expected_path(ufo_filename)
+        actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
 
         if use_varlib:
             assert not differ([expected_path, actual_path])
@@ -220,11 +250,17 @@ def test_strict_flag(capfd):
     Using varlib should fail (output should not be extrapolated) because
     extrapolation is not supported by varlib.
     """
-    runner_args = ['-t', TOOL, '-o', 'a', 'c', 'n', 's', 'd', f'_{get_input_path("OverlappingPoints.designspace")}']  # noqa: E501
+    # Create isolated temp directory and copy input files
+    temp_dir = get_temp_dir_path(TOOL)
+    copytree(os.path.join(DATA_DIR, 'input'), os.path.join(temp_dir, 'input'))
+
+    # Run tool with designspace in temp location
+    ds_path = os.path.join(temp_dir, 'input', 'OverlappingPoints.designspace')
+    runner_args = ['-t', TOOL, '-o', 'a', 'c', 'n', 's', 'd', f'_{ds_path}']
     runner(runner_args)
 
     for ufo_filename in ("overlapping-Thin.ufo", "overlapping-Black.ufo"):
-        expected_path = _get_output_path(ufo_filename, 'expected_output')
-        actual_path = _get_output_path(ufo_filename, 'temp_output')
+        expected_path = get_expected_path(ufo_filename)
+        actual_path = os.path.join(temp_dir, 'temp_output', ufo_filename)
 
         assert differ([expected_path, actual_path])

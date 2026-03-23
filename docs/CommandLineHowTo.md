@@ -90,7 +90,7 @@ Commands which operate on files require that you specify the directory path of t
 ```
 open /Users/rroberts/.bash_profile # Mac
 start C:\adobe\FDK\FDKReleaseNotes.txt # Windows
-otfautohint -a MyFont.pfa # any system
+afdko otfautohint -a MyFont.pfa # any system
 ```
 
 The easiest way to get a file path into the command line is to drag its icon from a *Finder/Explorer* window onto the *Terminal/Command Prompt* window. When you do this, the absolute path — the complete path from the computer’s root directory — is copied. However, a command window always has a “current” directory. If the file is in the current directory, then you only need to type the file’s name, as in the third example above. To see the absolute path of the current directory, type the following command:
@@ -107,73 +107,73 @@ If you leave off the initial slash (/), then the path is assumed to be relative 
 
 Some commands produce a lot of text output, so much that it would be more convenient to look at the output in a text editor with good search functions. To send the output of a command to a file, add a greater-than sign (`>`) followed by a file path, to the command line. For example:
 ```
-otfautohint -a MyFont.pfa
+afdko otfautohint -a MyFont.pfa
 ```
 is likely to produce several hundred lines of output. To browse this more easily, enter:
 ```
-otfautohint -a MyFont.pfa > MyFont_autohint.txt
+afdko otfautohint -a MyFont.pfa > MyFont_autohint.txt
 ```
-This will “re-direct” the output of the otfautohint command into the file `MyFont_autohint.txt`. You
+This will "re-direct" the output of the otfautohint command into the file `MyFont_autohint.txt`. You
 can then open this file in your favorite text editor, and search for interesting notes.
 
 ## **Favorite AFDKO (Adobe® Font Development Kit for OpenType®) commands**
 Run `compareFamily` QA tool on all the fonts in the current directory, and send the output to the file `cf_output.txt`:
 ```
-compareFamily -rn -rm -rp > cf_output.txt
+afdko compareFamily -rn -rm -rp > cf_output.txt
 ```
 **Note**: All the fonts in the current directory should belong to the same family; `compareFamily` can handle fonts from multiple font families found in the current directory, but the output file is easier to read if all fonts belong to the same family. Also, it may issue incorrect error messages if the directory contains fonts from different families.
 
 Get the in-line help for `compareFamily`:
 ```
-compareFamily -h
+afdko compareFamily -h
 ```
-Run `checkOutlines` QA tool on the font MinionPro-Bold.otf present in the Bold subdirectory of the current directory:
+Run `checkoutlinesufo` QA tool on the font MinionPro-Bold.otf present in the Bold subdirectory of the current directory:
 ```
-checkOutlines Bold/MinionPro-Bold.otf
+afdko checkoutlinesufo Bold/MinionPro-Bold.otf
 ```
 Autohint only unhinted glyphs in a font: (This allows you to manually hint some glyphs in FontLab without overwriting that work when using the otfautohint program)
 ```
-otfautohint font.pfa
+afdko otfautohint font.pfa
 ```
 Autohint all glyphs in a font: (This will remove any hints that existed before)
 ```
-otfautohint -a font.pfa
+afdko otfautohint -a font.pfa
 ```
-Build and OpenType CFF font in release mode, assuming that all the input files (font.pfa, features, fontinfo, FontMenuNameDB and GlyphOrderAndAliasDB) have default names, and default locations relative to the current directory: (The resulting OpenType font file, will be named according to the font’s PostScript® name)
+Build and OpenType CFF font in release mode, assuming that all the input files (font.pfa, features, fontinfo, FontMenuNameDB and GlyphOrderAndAliasDB) have default names, and default locations relative to the current directory: (The resulting OpenType font file, will be named according to the font's PostScript® name)
 ```
-makeotf -r
+afdko makeotf -r
 ```
 Build and OpenType CFF font in release mode (assuming that all the input files have default names and locations relative to the current directory), and write the OpenType font file with the name test.otf:
 ```
-makeotf -r -o test.otf
+afdko makeotf -r -o test.otf
 ```
 Display a crude representation, at 24 points per em, of the glyphs `A` and `dollar.taboldstyle` from the font MinionPro-Regular.otf: (This command does not work with fonts containing TrueType® outlines):
 ```
-tx -bc -z 24 -g A,dollar.taboldstyle MinionPro-Regular.otf
+afdko tx -bc -z 24 -g A,dollar.taboldstyle MinionPro-Regular.otf
 ```
 Get a PDF file (MinionPro-Regular_glyphset.pdf) displaying all the glyphs in the font:
 ```
-tx -pdf -1 MinionPro-Regular.otf > MinionPro-Regular_glyphset.pdf
+afdko tx -pdf -1 MinionPro-Regular.otf > MinionPro-Regular_glyphset.pdf
 ```
-Get the glyph name, encoding value, advance width and the glyph’s bounding box (left,bottom,right,top), for all glyphs in the font:
+Get the glyph name, encoding value, advance width and the glyph's bounding box (left,bottom,right,top), for all glyphs in the font:
 ```
-tx -mtx MinionPro-Regular.otf
+afdko tx -mtx MinionPro-Regular.otf
 ```
 Get all the switches that can be used with the -mtx option of the tx program:
 ```
-tx -mtx -h
+afdko tx -mtx -h
 ```
 Dump the name table of an OpenType font, in a fairly readable way:
 ```
-spot -t name=3 MinionPro-Regular.otf
+afdko spot -t name=3 MinionPro-Regular.otf
 ```
-Dump the GSUB table of a font (in AFDKO’s feature-file syntax), and re-direct the output to a text file (gsub.txt):
+Dump the GSUB table of a font (in AFDKO's feature-file syntax), and re-direct the output to a text file (gsub.txt):
 ```
-spot -t GSUB=7 MinionPro-Regular.otf > gsub.txt
+afdko spot -t GSUB=7 MinionPro-Regular.otf > gsub.txt
 ```
 Dump the GPOS table of a font, and re-direct the output to a text file (gpos.txt):
 ```
-spot -t GPOS=7 MinionPro-Regular.otf > gpos.txt
+afdko spot -t GPOS=7 MinionPro-Regular.otf > gpos.txt
 ```
 
 ## **Recommendations for text editing applications**

@@ -61,8 +61,9 @@
       <point x="30" y="513" type="line"/>
       <point x="30" y="467" type="line"/>
       <point x="140" y="467" type="line"/>
-      <point x="140" y="431"/>
-      <point x="140" y="396"/>
+      <point x="140" y="465" type="line" smooth="yes"/>
+      <point x="140" y="430"/>
+      <point x="140" y="395"/>
       <point x="140" y="360" type="curve" smooth="yes"/>
     </contour>
     <contour>
