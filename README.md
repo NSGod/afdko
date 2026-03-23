@@ -36,37 +36,12 @@ projects.
 
 📣 Recent News
 ------------
-**The Python port of psautohint was (re)integrated into the AFDKO repository as "otfautohint"**
+**AFDKO 5.0.0** is a major release featuring:
+- Unified command interface: `afdko <command>` syntax
+- Variable font support in `addfeatures` (replaces `makeotfexe`)
+- Extensive C→C++ codebase modernization
 
-More information can be found in [docs/otfautohint_Notes.md](docs/otfautohint_Notes.md)
-
-**AFDKO now provides a unified command interface**
-
-All AFDKO tools are now accessed through the `afdko` command:
-
-```sh
-afdko <command> [options]
-```
-
-For example:
-```sh
-afdko makeotf -r
-afdko tx -dump font.otf
-afdko spot -Proof font.otf
-```
-
-The individual command wrappers (e.g., `makeotf`, `tx`, `spot`) are deprecated and will be removed in a future release. By default, these wrappers continue to work silently. To see deprecation warnings, set:
-
-```sh
-export AFDKO_WRAPPER_MODE=warn
-```
-
-For more details on the deprecation system and migration timeline, see [docs/Deprecation_System.md](docs/Deprecation_System.md).
-
-To see all available commands:
-```sh
-afdko --help
-```
+See [NEWS.md](NEWS.md) for full release notes and migration guide.
 
 Installation
 ------------
