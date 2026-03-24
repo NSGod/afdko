@@ -11,7 +11,10 @@ from math import sqrt
 from collections import defaultdict
 from builtins import tuple as _tuple
 from typing import Iterator, Any, Callable
-from typing_extensions import Self
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 from fontTools.misc.bezierTools import (
     solveQuadratic,

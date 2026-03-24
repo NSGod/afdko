@@ -19,7 +19,10 @@ from typing import (
     Set,
     Protocol,
 )
-from typing_extensions import Self
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 log: logging.Logger = logging.getLogger(__name__)
 

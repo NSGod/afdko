@@ -18,7 +18,10 @@ from typing import (
     Iterable,
     NamedTuple,
 )
-from typing_extensions import Self
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 from fontTools.misc.bezierTools import solveCubic
 
